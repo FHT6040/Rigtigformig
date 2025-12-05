@@ -541,19 +541,33 @@ class RFM_User_Dashboard {
      * Handle profile update
      */
     public function handle_profile_update() {
+        // DEBUG: Log that handler is called
+        error_log('RFM DEBUG: handle_profile_update CALLED');
+        error_log('RFM DEBUG: POST data: ' . print_r($_POST, true));
+        error_log('RFM DEBUG: User ID: ' . get_current_user_id());
+        error_log('RFM DEBUG: Is user logged in: ' . (is_user_logged_in() ? 'YES' : 'NO'));
+
         check_ajax_referer('rfm_nonce', 'nonce');
-        
+
+        error_log('RFM DEBUG: Nonce check PASSED');
+
         if (!is_user_logged_in()) {
+            error_log('RFM DEBUG: User not logged in - sending error');
             wp_send_json_error(array('message' => __('Du skal være logget ind', 'rigtig-for-mig')));
         }
-        
+
         $user_id = get_current_user_id();
         $user = wp_get_current_user();
-        
+
+        error_log('RFM DEBUG: User roles: ' . print_r($user->roles, true));
+
         // Check role
         if (!in_array('rfm_user', $user->roles)) {
+            error_log('RFM DEBUG: User does not have rfm_user role - sending error');
             wp_send_json_error(array('message' => __('Uautoriseret adgang', 'rigtig-for-mig')));
         }
+
+        error_log('RFM DEBUG: Role check PASSED');
         
         global $wpdb;
         $table = $wpdb->prefix . 'rfm_user_profiles';
