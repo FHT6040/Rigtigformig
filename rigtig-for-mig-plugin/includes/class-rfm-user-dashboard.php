@@ -252,13 +252,129 @@ class RFM_User_Dashboard {
         </div>
         
         <script>
-        // NOTE: JavaScript handlers are now in public.js to avoid conflicts
-        // This inline script is kept for backwards compatibility but is mostly empty
         jQuery(document).ready(function($) {
             console.log('RFM DEBUG: Dashboard shortcode loaded');
             console.log('RFM DEBUG: rfmData available:', typeof rfmData !== 'undefined');
+            console.log('RFM DEBUG: Form exists:', $('#rfm-user-profile-form').length > 0);
 
-            // Delete account modal handlers (kept here since they're modal-specific)
+            // Profile form handler - MUST be inline to work!
+            $('#rfm-user-profile-form').on('submit', function(e) {
+                e.preventDefault();
+
+                console.log('RFM DEBUG: Profile form submitted!');
+                console.log('RFM DEBUG: rfmData:', rfmData);
+
+                var $form = $(this);
+                var $button = $form.find('button[type="submit"]');
+                var $messages = $form.find('.rfm-form-messages');
+                var originalText = $button.text();
+
+                var formData = {
+                    action: 'rfm_update_user_profile',
+                    nonce: rfmData.nonce,
+                    display_name: $('#user_display_name').val(),
+                    phone: $('#user_phone').val(),
+                    bio: $('#user_bio').val()
+                };
+
+                console.log('RFM DEBUG: Sending data:', formData);
+
+                $button.prop('disabled', true).text('<?php _e('Gemmer...', 'rigtig-for-mig'); ?>');
+
+                $.ajax({
+                    url: rfmData.ajaxurl,
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        console.log('RFM DEBUG: AJAX success response:', response);
+                        console.log('RFM DEBUG: Response type:', typeof response);
+
+                        if (response.success) {
+                            $messages.html('<div class="rfm-message rfm-message-success">' + response.data.message + '</div>');
+                        } else {
+                            $messages.html('<div class="rfm-message rfm-message-error">' + (response.data.message || 'Der opstod en fejl') + '</div>');
+                        }
+                        $button.prop('disabled', false).text(originalText);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('RFM DEBUG: AJAX error!');
+                        console.error('RFM DEBUG: Status:', status);
+                        console.error('RFM DEBUG: Error:', error);
+                        console.error('RFM DEBUG: Response text:', xhr.responseText);
+                        $messages.html('<div class="rfm-message rfm-message-error">Der opstod en fejl: ' + error + '</div>');
+                        $button.prop('disabled', false).text(originalText);
+                    }
+                });
+            });
+
+            // Avatar upload
+            $('#user_avatar_upload').on('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+
+                console.log('RFM DEBUG: Avatar upload started');
+
+                // Preview
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#user-avatar-preview').attr('src', e.target.result);
+                };
+                reader.readAsDataURL(file);
+
+                // Upload
+                var formData = new FormData();
+                formData.append('action', 'rfm_upload_user_avatar');
+                formData.append('nonce', rfmData.nonce);
+                formData.append('avatar', file);
+
+                $.ajax({
+                    url: rfmData.ajaxurl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        console.log('RFM DEBUG: Avatar upload response:', response);
+                        if (response.success) {
+                            $('.rfm-form-messages').html('<div class="rfm-message rfm-message-success">' + response.data.message + '</div>');
+                        } else {
+                            $('.rfm-form-messages').html('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('RFM DEBUG: Avatar upload error:', error);
+                    }
+                });
+            });
+
+            // Logout button
+            $('#rfm-logout-btn').on('click', function(e) {
+                e.preventDefault();
+
+                console.log('RFM DEBUG: Logout button clicked!');
+
+                var $button = $(this);
+                $button.prop('disabled', true).text('Logger ud...');
+
+                $.ajax({
+                    url: rfmData.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'rfm_logout',
+                        nonce: rfmData.nonce
+                    },
+                    success: function(response) {
+                        console.log('RFM DEBUG: Logout response:', response);
+                        window.location.href = '<?php echo home_url(); ?>';
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('RFM DEBUG: Logout error:', error);
+                        $button.prop('disabled', false).text('Log ud');
+                    }
+                });
+            });
+
+            // Delete account modal handlers
             $('#rfm-delete-account').on('click', function() {
                 $('#rfm-delete-modal').fadeIn();
             });
@@ -270,7 +386,7 @@ class RFM_User_Dashboard {
             });
 
             $('#rfm-confirm-delete').on('click', function() {
-                const password = $('#delete_confirm_password').val();
+                var password = $('#delete_confirm_password').val();
 
                 if (!password) {
                     $('.rfm-modal-messages').html('<div class="rfm-message rfm-message-error"><?php _e('Indtast din adgangskode', 'rigtig-for-mig'); ?></div>');
