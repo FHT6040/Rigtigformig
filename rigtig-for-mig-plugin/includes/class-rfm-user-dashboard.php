@@ -624,7 +624,18 @@ class RFM_User_Dashboard {
             ),
             array('user_id' => $user_id)
         );
-        
+
+        // Clear caches after profile update
+        wp_cache_delete($user_id, 'users');
+        wp_cache_delete($user_id, 'user_meta');
+
+        // Clear plugin caches
+        if (function_exists('litespeed_purge_all')) {
+            litespeed_purge_all();
+        }
+        do_action('litespeed_purge_all');
+        do_action('w3tc_flush_all');
+
         wp_send_json_success(array('message' => __('Profil opdateret succesfuldt', 'rigtig-for-mig')));
     }
     

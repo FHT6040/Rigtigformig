@@ -455,8 +455,26 @@ class RFM_User_Registration {
             ));
         }
         
-        // Check if email is verified
-        $verified = get_user_meta($user->ID, 'rfm_email_verified', true);
+        // Check if email is verified (different check for experts vs users)
+        $verified = false;
+
+        if (in_array('rfm_expert_user', $user->roles)) {
+            // For experts: Check if they have an expert post and if it's verified
+            $expert_posts = get_posts(array(
+                'post_type' => 'rfm_expert',
+                'author' => $user->ID,
+                'posts_per_page' => 1,
+                'post_status' => 'publish'
+            ));
+
+            if (!empty($expert_posts)) {
+                $verified = (bool) get_post_meta($expert_posts[0]->ID, '_rfm_email_verified', true);
+            }
+        } else {
+            // For regular users: Check user meta
+            $verified = (bool) get_user_meta($user->ID, 'rfm_email_verified', true);
+        }
+
         if (!$verified) {
             wp_send_json_error(array(
                 'message' => __('Din e-mail er ikke bekræftet. Tjek din indbakke.', 'rigtig-for-mig')
@@ -497,12 +515,12 @@ class RFM_User_Registration {
      */
     public function handle_logout() {
         check_ajax_referer('rfm_nonce', 'nonce');
-        
+
         // Destroy all sessions
         wp_destroy_current_session();
         wp_clear_auth_cookie();
         wp_set_current_user(0);
-        
+
         // Clear all cookies
         if (isset($_COOKIE)) {
             foreach ($_COOKIE as $name => $value) {
@@ -511,12 +529,32 @@ class RFM_User_Registration {
                 }
             }
         }
-        
+
         // Logout
         wp_logout();
-        
+
+        // Clear all caches to prevent showing cached logged-in content
+        wp_cache_flush();
+
+        // Clear LiteSpeed cache if active
+        if (function_exists('litespeed_purge_all')) {
+            litespeed_purge_all();
+        }
+
+        // Trigger cache clearing hooks for popular cache plugins
+        do_action('litespeed_purge_all');
+        do_action('w3tc_flush_all');
+        do_action('wp_cache_clear_cache');
+
+        // Send no-cache headers
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+
         do_action('rfm_user_logged_out');
-        
+
         wp_send_json_success(array(
             'message' => __('Du er nu logget ud', 'rigtig-for-mig'),
             'redirect' => home_url()
