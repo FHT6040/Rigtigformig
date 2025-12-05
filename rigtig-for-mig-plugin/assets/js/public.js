@@ -8,46 +8,59 @@
     // Rating form submission
     $('#rfm-submit-rating-form').on('submit', function(e) {
         e.preventDefault();
-        
+
+        console.log('RFM DEBUG: Rating form submitted');
+
         var $form = $(this);
         var $button = $form.find('button[type="submit"]');
         var rating = $form.find('input[name="rating"]:checked').val();
         var review = $form.find('textarea[name="review"]').val();
         var expert_id = $form.find('input[name="expert_id"]').val();
-        
+
+        console.log('RFM DEBUG: Rating data:', {rating: rating, review: review, expert_id: expert_id});
+
         if (!rating) {
             alert(rfmData.strings.error || 'Vælg venligst en rating');
             return;
         }
-        
+
         // Disable button
         $button.prop('disabled', true).text(rfmData.strings.loading || 'Indlæser...');
-        
+
+        var ratingData = {
+            action: 'rfm_submit_rating',
+            nonce: rfmData.nonce,
+            expert_id: expert_id,
+            rating: rating,
+            review: review
+        };
+
+        console.log('RFM DEBUG: Sending rating data:', ratingData);
+
         $.ajax({
             url: rfmData.ajaxurl,
             type: 'POST',
-            data: {
-                action: 'rfm_submit_rating',
-                nonce: rfmData.nonce,
-                expert_id: expert_id,
-                rating: rating,
-                review: review
-            },
+            data: ratingData,
             success: function(response) {
+                console.log('RFM DEBUG: Rating AJAX success response:', response);
+
                 if (response.success) {
                     // Show success message
                     showNotification(response.data.message, 'success');
-                    
+
                     // Reload page after 2 seconds
                     setTimeout(function() {
                         location.reload();
                     }, 2000);
                 } else {
+                    console.error('RFM DEBUG: Rating error:', response.data);
                     showNotification(response.data.message, 'error');
                     $button.prop('disabled', false).text('Send bedømmelse');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('RFM DEBUG: Rating AJAX error:', {xhr: xhr, status: status, error: error});
+                console.error('RFM DEBUG: Response text:', xhr.responseText);
                 showNotification(rfmData.strings.error || 'Der opstod en fejl', 'error');
                 $button.prop('disabled', false).text('Send bedømmelse');
             }
@@ -95,35 +108,47 @@
     // Logout handler
     $(document).on('click', '#rfm-logout-btn', function(e) {
         e.preventDefault();
-        
+
+        console.log('RFM DEBUG: Logout button clicked');
+
         var $button = $(this);
         var originalText = $button.text();
-        
+
         // Disable button and show loading
         $button.prop('disabled', true).text('Logger ud...');
-        
+
+        var logoutData = {
+            action: 'rfm_logout',
+            nonce: rfmData.nonce
+        };
+
+        console.log('RFM DEBUG: Sending logout request:', logoutData);
+
         $.ajax({
             url: rfmData.ajaxurl,
             type: 'POST',
-            data: {
-                action: 'rfm_logout', // Changed from rfm_expert_logout
-                nonce: rfmData.nonce
-            },
+            data: logoutData,
             success: function(response) {
+                console.log('RFM DEBUG: Logout AJAX success response:', response);
+
                 if (response.success) {
                     // Show success message briefly
                     showNotification(response.data.message, 'success');
-                    
+
                     // Redirect after 1 second
+                    console.log('RFM DEBUG: Redirecting to:', response.data.redirect);
                     setTimeout(function() {
                         window.location.href = response.data.redirect;
                     }, 1000);
                 } else {
+                    console.error('RFM DEBUG: Logout error:', response.data);
                     showNotification(response.data.message, 'error');
                     $button.prop('disabled', false).text(originalText);
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('RFM DEBUG: Logout AJAX error:', {xhr: xhr, status: status, error: error});
+                console.error('RFM DEBUG: Response text:', xhr.responseText);
                 showNotification('Der opstod en fejl ved logout', 'error');
                 $button.prop('disabled', false).text(originalText);
             }
@@ -137,35 +162,48 @@
     // User profile form submission
     $(document).on('submit', '#rfm-user-profile-form', function(e) {
         e.preventDefault();
-        
+
+        console.log('RFM DEBUG: User profile form submitted');
+        console.log('RFM DEBUG: rfmData:', rfmData);
+
         var $form = $(this);
         var $button = $form.find('button[type="submit"]');
         var originalText = $button.text();
-        
+
+        // Collect form data
+        var formData = {
+            action: 'rfm_update_user_profile',
+            nonce: rfmData.nonce,
+            display_name: $('#user_display_name').val(),
+            phone: $('#user_phone').val(),
+            bio: $('#user_bio').val()
+        };
+
+        console.log('RFM DEBUG: Sending data:', formData);
+
         // Disable button
         $button.prop('disabled', true).text('Gemmer...');
-        
+
         $.ajax({
             url: rfmData.ajaxurl,
             type: 'POST',
-            data: {
-                action: 'rfm_update_user_profile',
-                nonce: rfmData.nonce,
-                display_name: $('#user_display_name').val(),
-                phone: $('#user_phone').val(),
-                bio: $('#user_bio').val()
-            },
+            data: formData,
             success: function(response) {
+                console.log('RFM DEBUG: AJAX success response:', response);
+
                 if (response.success) {
                     showNotification(response.data.message, 'success');
                     $button.prop('disabled', false).text(originalText);
                 } else {
-                    showNotification(response.data.message, 'error');
+                    console.error('RFM DEBUG: Server returned error:', response.data);
+                    showNotification(response.data.message || 'Der opstod en fejl', 'error');
                     $button.prop('disabled', false).text(originalText);
                 }
             },
-            error: function() {
-                showNotification('Der opstod en fejl ved opdatering', 'error');
+            error: function(xhr, status, error) {
+                console.error('RFM DEBUG: AJAX error:', {xhr: xhr, status: status, error: error});
+                console.error('RFM DEBUG: Response text:', xhr.responseText);
+                showNotification('Der opstod en fejl ved opdatering: ' + error, 'error');
                 $button.prop('disabled', false).text(originalText);
             }
         });
