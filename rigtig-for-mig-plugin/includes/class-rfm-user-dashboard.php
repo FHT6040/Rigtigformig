@@ -347,6 +347,67 @@ class RFM_User_Dashboard {
                 });
             });
 
+            // Password change form handler
+            $('#rfm-password-change-form').on('submit', function(e) {
+                e.preventDefault();
+
+                console.log('RFM DEBUG: Password change form submitted!');
+
+                var $form = $(this);
+                var $button = $form.find('button[type="submit"]');
+                var $messages = $form.find('.rfm-password-messages');
+                var originalText = $button.text();
+
+                var current_password = $('#current_password').val();
+                var new_password = $('#new_password').val();
+                var confirm_password = $('#confirm_password').val();
+
+                // Client-side validation
+                if (!current_password || !new_password || !confirm_password) {
+                    $messages.html('<div class="rfm-message rfm-message-error"><?php _e('Udfyld alle felter', 'rigtig-for-mig'); ?></div>');
+                    return;
+                }
+
+                if (new_password !== confirm_password) {
+                    $messages.html('<div class="rfm-message rfm-message-error"><?php _e('De nye adgangskoder matcher ikke', 'rigtig-for-mig'); ?></div>');
+                    return;
+                }
+
+                if (new_password.length < 8) {
+                    $messages.html('<div class="rfm-message rfm-message-error"><?php _e('Ny adgangskode skal være mindst 8 tegn', 'rigtig-for-mig'); ?></div>');
+                    return;
+                }
+
+                $button.prop('disabled', true).text('<?php _e('Skifter adgangskode...', 'rigtig-for-mig'); ?>');
+
+                $.ajax({
+                    url: rfmData.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'rfm_update_user_profile',
+                        nonce: rfmData.nonce,
+                        current_password: current_password,
+                        new_password: new_password
+                    },
+                    success: function(response) {
+                        console.log('RFM DEBUG: Password change response:', response);
+
+                        if (response.success) {
+                            $messages.html('<div class="rfm-message rfm-message-success">' + response.data.message + '</div>');
+                            $form[0].reset();
+                        } else {
+                            $messages.html('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
+                        }
+                        $button.prop('disabled', false).text(originalText);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('RFM DEBUG: Password change error:', error);
+                        $messages.html('<div class="rfm-message rfm-message-error"><?php _e('Der opstod en fejl', 'rigtig-for-mig'); ?></div>');
+                        $button.prop('disabled', false).text(originalText);
+                    }
+                });
+            });
+
             // Logout button
             $('#rfm-logout-btn').on('click', function(e) {
                 e.preventDefault();
@@ -370,6 +431,55 @@ class RFM_User_Dashboard {
                     error: function(xhr, status, error) {
                         console.error('RFM DEBUG: Logout error:', error);
                         $button.prop('disabled', false).text('Log ud');
+                    }
+                });
+            });
+
+            // Download user data (GDPR)
+            $('#rfm-download-data').on('click', function(e) {
+                e.preventDefault();
+
+                console.log('RFM DEBUG: Download data button clicked!');
+
+                var $button = $(this);
+                var originalText = $button.text();
+
+                $button.prop('disabled', true).text('<?php _e('Downloader...', 'rigtig-for-mig'); ?>');
+
+                $.ajax({
+                    url: rfmData.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'rfm_update_user_profile',
+                        nonce: rfmData.nonce,
+                        download_data: true
+                    },
+                    success: function(response) {
+                        console.log('RFM DEBUG: Download data response:', response);
+
+                        if (response.success) {
+                            // Create download link
+                            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(response.data.user_data, null, 2));
+                            var downloadAnchorNode = document.createElement('a');
+                            downloadAnchorNode.setAttribute("href", dataStr);
+                            downloadAnchorNode.setAttribute("download", "mine-data-" + new Date().toISOString().split('T')[0] + ".json");
+                            document.body.appendChild(downloadAnchorNode);
+                            downloadAnchorNode.click();
+                            downloadAnchorNode.remove();
+
+                            $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-success"><?php _e('Dine data er downloadet', 'rigtig-for-mig'); ?></div>');
+                            setTimeout(function() {
+                                $('.rfm-message-success').fadeOut();
+                            }, 3000);
+                        } else {
+                            $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
+                        }
+                        $button.prop('disabled', false).text(originalText);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('RFM DEBUG: Download data error:', error);
+                        $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-error"><?php _e('Der opstod en fejl', 'rigtig-for-mig'); ?></div>');
+                        $button.prop('disabled', false).text(originalText);
                     }
                 });
             });
