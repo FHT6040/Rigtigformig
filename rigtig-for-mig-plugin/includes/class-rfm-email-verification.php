@@ -383,11 +383,87 @@ Med venlig hilsen,
     public function resend_verification($expert_id) {
         $email = get_post_meta($expert_id, '_rfm_email', true);
         $user_id = get_post_field('post_author', $expert_id);
-        
+
         if ($email && $user_id) {
             return $this->send_verification_email($expert_id, $email, $user_id);
         }
-        
+
         return false;
+    }
+
+    /**
+     * Set user verified status
+     * Ensures consistent data type (string '1' or '0')
+     *
+     * @param int $user_id WordPress user ID
+     * @param bool $verified True to mark as verified, false for unverified
+     * @return bool True on success
+     */
+    public static function set_user_verified($user_id, $verified = true) {
+        // Store as string for MySQL consistency
+        $value = $verified ? '1' : '0';
+
+        update_user_meta($user_id, 'rfm_email_verified', $value);
+
+        // Also store timestamp when verified
+        if ($verified) {
+            update_user_meta($user_id, 'rfm_email_verified_at', current_time('mysql'));
+        }
+
+        error_log('RFM INFO: User ' . $user_id . ' verification set to: ' . $value);
+
+        return true;
+    }
+
+    /**
+     * Check if user is verified
+     * Returns boolean, handles all edge cases
+     *
+     * @param int $user_id WordPress user ID
+     * @return bool True if verified
+     */
+    public static function is_user_verified($user_id) {
+        $verified = get_user_meta($user_id, 'rfm_email_verified', true);
+
+        // Handle all possible values
+        return ($verified === '1' || $verified === 1 || $verified === true);
+    }
+
+    /**
+     * Get verified users count
+     * Consistent with storage format
+     *
+     * @return int Number of verified users
+     */
+    public static function get_verified_users_count() {
+        global $wpdb;
+
+        return (int) $wpdb->get_var("
+            SELECT COUNT(DISTINCT u.ID)
+            FROM {$wpdb->users} u
+            INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
+            WHERE um.meta_key = 'rfm_email_verified'
+            AND um.meta_value IN ('1', 1)
+            AND EXISTS (
+                SELECT 1 FROM {$wpdb->usermeta} um2
+                WHERE um2.user_id = u.ID
+                AND um2.meta_key = 'wp_capabilities'
+                AND um2.meta_value LIKE '%rfm_user%'
+            )
+        ");
+    }
+
+    /**
+     * Get verification timestamp for a user
+     *
+     * @param int $user_id WordPress user ID
+     * @return string|false Timestamp or false if not verified
+     */
+    public static function get_user_verification_date($user_id) {
+        if (!self::is_user_verified($user_id)) {
+            return false;
+        }
+
+        return get_user_meta($user_id, 'rfm_email_verified_at', true);
     }
 }

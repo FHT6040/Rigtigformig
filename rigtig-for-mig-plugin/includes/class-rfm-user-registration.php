@@ -406,9 +406,9 @@ class RFM_User_Registration {
         if ($token) {
             $verification->send_user_verification_email($email, $token, 'user');
         }
-        
-        // Update user meta
-        update_user_meta($user_id, 'rfm_email_verified', 0);
+
+        // Set user as unverified using helper method
+        RFM_Email_Verification::set_user_verified($user_id, false);
         update_user_meta($user_id, 'rfm_account_status', 'pending_verification');
         
         wp_send_json_success(array(
@@ -557,7 +557,8 @@ class RFM_User_Registration {
 
         wp_send_json_success(array(
             'message' => __('Du er nu logget ud', 'rigtig-for-mig'),
-            'redirect' => home_url()
+            'redirect' => home_url(),
+            'clear_cache' => true  // Signal to JavaScript for hard reload
         ));
     }
     

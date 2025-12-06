@@ -123,22 +123,8 @@ class RFM_User_Admin {
             }
         }
         
-        // Get statistics
-        $profiles_table = $wpdb->prefix . 'rfm_user_profiles';
-        $verified_users = $wpdb->get_var("
-            SELECT COUNT(DISTINCT u.ID) 
-            FROM {$wpdb->users} u
-            INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
-            WHERE um.meta_key = 'rfm_email_verified' 
-            AND um.meta_value = '1'
-            AND EXISTS (
-                SELECT 1 FROM {$wpdb->usermeta} um2 
-                WHERE um2.user_id = u.ID 
-                AND um2.meta_key = 'wp_capabilities' 
-                AND um2.meta_value LIKE '%rfm_user%'
-            )
-        ");
-        
+        // Get statistics using helper methods
+        $verified_users = RFM_Email_Verification::get_verified_users_count();
         $pending_users = $total_users - $verified_users;
         
         ?>
@@ -206,7 +192,7 @@ class RFM_User_Admin {
                             ));
                             
                             $is_online = $online_status->is_user_online($user->ID);
-                            $verified = get_user_meta($user->ID, 'rfm_email_verified', true);
+                            $verified = RFM_Email_Verification::is_user_verified($user->ID);
                             $last_login = $profile ? $profile->last_login : null;
                         ?>
                             <tr>
@@ -385,8 +371,8 @@ class RFM_User_Admin {
                 "SELECT * FROM $profiles_table WHERE user_id = %d",
                 $user->ID
             ));
-            
-            $verified = get_user_meta($user->ID, 'rfm_email_verified', true);
+
+            $verified = RFM_Email_Verification::is_user_verified($user->ID);
             
             fputcsv($output, array(
                 $user->ID,

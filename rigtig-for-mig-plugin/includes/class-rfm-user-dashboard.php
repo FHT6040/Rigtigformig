@@ -424,13 +424,30 @@ class RFM_User_Dashboard {
                         action: 'rfm_logout',
                         nonce: rfmData.nonce
                     },
+                    cache: false,  // Disable AJAX cache
                     success: function(response) {
                         console.log('RFM DEBUG: Logout response:', response);
-                        window.location.href = '<?php echo home_url(); ?>';
+
+                        // Clear service worker caches if available
+                        if ('caches' in window) {
+                            caches.keys().then(function(names) {
+                                for (let name of names) {
+                                    caches.delete(name);
+                                }
+                            });
+                        }
+
+                        // Force hard reload without cache
+                        if (response.data && response.data.clear_cache) {
+                            window.location.replace(response.data.redirect || '<?php echo home_url(); ?>');
+                        } else {
+                            window.location.href = response.data.redirect || '<?php echo home_url(); ?>';
+                        }
                     },
                     error: function(xhr, status, error) {
                         console.error('RFM DEBUG: Logout error:', error);
-                        $button.prop('disabled', false).text('Log ud');
+                        // Force redirect anyway
+                        window.location.replace('<?php echo home_url(); ?>');
                     }
                 });
             });
@@ -648,6 +665,46 @@ class RFM_User_Dashboard {
     }
     
     /**
+     * Ensure user profile row exists in database
+     * Creates row if missing to prevent UPDATE failures
+     *
+     * @param int $user_id WordPress user ID
+     * @return bool True if row exists or was created successfully
+     */
+    private function ensure_user_profile_exists($user_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'rfm_user_profiles';
+
+        // Check if profile exists
+        $exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table WHERE user_id = %d",
+            $user_id
+        ));
+
+        if (!$exists) {
+            // Create profile row
+            $result = $wpdb->insert(
+                $table,
+                array(
+                    'user_id' => $user_id,
+                    'account_created_at' => current_time('mysql')
+                ),
+                array('%d', '%s')
+            );
+
+            if ($result === false) {
+                error_log('RFM ERROR: Failed to create user profile row for user ' . $user_id);
+                error_log('RFM ERROR: ' . $wpdb->last_error);
+                return false;
+            }
+
+            error_log('RFM INFO: Created user profile row for user ' . $user_id);
+        }
+
+        return true;
+    }
+
+    /**
      * Handle profile update
      */
     public function handle_profile_update() {
@@ -748,16 +805,32 @@ class RFM_User_Dashboard {
             'ID' => $user_id,
             'display_name' => $display_name
         ));
-        
+
+        // Ensure profile row exists before updating
+        if (!$this->ensure_user_profile_exists($user_id)) {
+            wp_send_json_error(array('message' => __('Kunne ikke oprette profil i databasen', 'rigtig-for-mig')));
+            return;
+        }
+
         // Update custom profile
-        $wpdb->update(
+        $result = $wpdb->update(
             $table,
             array(
                 'phone' => $phone,
                 'bio' => $bio
             ),
-            array('user_id' => $user_id)
+            array('user_id' => $user_id),
+            array('%s', '%s'),
+            array('%d')
         );
+
+        // Check if update succeeded
+        if ($result === false) {
+            error_log('RFM ERROR: Failed to update user profile for user ' . $user_id);
+            error_log('RFM ERROR: ' . $wpdb->last_error);
+            wp_send_json_error(array('message' => __('Kunne ikke opdatere profil', 'rigtig-for-mig')));
+            return;
+        }
 
         // Clear caches after profile update
         wp_cache_delete($user_id, 'users');
@@ -778,39 +851,82 @@ class RFM_User_Dashboard {
      */
     public function handle_avatar_upload() {
         check_ajax_referer('rfm_nonce', 'nonce');
-        
+
         if (!is_user_logged_in()) {
             wp_send_json_error(array('message' => __('Du skal være logget ind', 'rigtig-for-mig')));
         }
-        
+
         $user_id = get_current_user_id();
-        
+
         if (empty($_FILES['avatar'])) {
             wp_send_json_error(array('message' => __('Ingen fil uploadet', 'rigtig-for-mig')));
         }
-        
+
+        // Validate file size (2MB max)
+        if ($_FILES['avatar']['size'] > 2 * 1024 * 1024) {
+            wp_send_json_error(array('message' => __('Billedet må maksimalt være 2 MB', 'rigtig-for-mig')));
+        }
+
+        // Validate file type
+        $allowed_types = array('image/jpeg', 'image/png', 'image/gif');
+        $file_type = $_FILES['avatar']['type'];
+        if (!in_array($file_type, $allowed_types)) {
+            wp_send_json_error(array('message' => __('Kun JPG, PNG og GIF er tilladt', 'rigtig-for-mig')));
+        }
+
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/media.php');
-        
+
         $attachment_id = media_handle_upload('avatar', 0);
-        
+
         if (is_wp_error($attachment_id)) {
+            error_log('RFM ERROR: Avatar upload failed - ' . $attachment_id->get_error_message());
             wp_send_json_error(array('message' => $attachment_id->get_error_message()));
         }
-        
+
         $image_url = wp_get_attachment_url($attachment_id);
-        
+
+        // Ensure profile row exists
+        if (!$this->ensure_user_profile_exists($user_id)) {
+            // Cleanup uploaded file since we can't save reference
+            wp_delete_attachment($attachment_id, true);
+            wp_send_json_error(array('message' => __('Kunne ikke oprette profil i databasen', 'rigtig-for-mig')));
+            return;
+        }
+
         // Update profile
         global $wpdb;
         $table = $wpdb->prefix . 'rfm_user_profiles';
-        
-        $wpdb->update(
+
+        $result = $wpdb->update(
             $table,
             array('profile_image' => $image_url),
-            array('user_id' => $user_id)
+            array('user_id' => $user_id),
+            array('%s'),
+            array('%d')
         );
-        
+
+        // Check if update succeeded
+        if ($result === false) {
+            error_log('RFM ERROR: Failed to save avatar URL for user ' . $user_id);
+            error_log('RFM ERROR: ' . $wpdb->last_error);
+            // Cleanup uploaded file since save failed
+            wp_delete_attachment($attachment_id, true);
+            wp_send_json_error(array('message' => __('Kunne ikke gemme profilbillede i databasen', 'rigtig-for-mig')));
+            return;
+        }
+
+        // Clear caches
+        wp_cache_delete($user_id, 'users');
+        wp_cache_delete($user_id, 'user_meta');
+
+        if (function_exists('litespeed_purge_all')) {
+            litespeed_purge_all();
+        }
+        do_action('litespeed_purge_all');
+        do_action('w3tc_flush_all');
+
         wp_send_json_success(array(
             'message' => __('Profilbillede uploadet succesfuldt', 'rigtig-for-mig'),
             'avatar_url' => $image_url
