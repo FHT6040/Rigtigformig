@@ -16,7 +16,8 @@ class RFM_Post_Types {
      */
     public static function register() {
         self::register_expert_post_type();
-        
+        self::register_user_post_type();
+
         // Enable Elementor for expert post type
         add_action('init', array(__CLASS__, 'enable_elementor_support'), 20);
     }
@@ -433,6 +434,231 @@ class RFM_Post_Types {
         // Save banner image
         if (isset($_POST['rfm_banner_image_id'])) {
             update_post_meta($post_id, '_rfm_banner_image_id', intval($_POST['rfm_banner_image_id']));
+        }
+    }
+
+    /**
+     * Register User post type (for regular users - Brugere)
+     */
+    private static function register_user_post_type() {
+        $labels = array(
+            'name'                  => _x('Brugere', 'Post type general name', 'rigtig-for-mig'),
+            'singular_name'         => _x('Bruger', 'Post type singular name', 'rigtig-for-mig'),
+            'menu_name'             => _x('Brugere', 'Admin Menu text', 'rigtig-for-mig'),
+            'name_admin_bar'        => _x('Bruger', 'Add New on Toolbar', 'rigtig-for-mig'),
+            'add_new'               => __('Tilføj Ny', 'rigtig-for-mig'),
+            'add_new_item'          => __('Tilføj Ny Bruger', 'rigtig-for-mig'),
+            'new_item'              => __('Ny Bruger', 'rigtig-for-mig'),
+            'edit_item'             => __('Rediger Bruger', 'rigtig-for-mig'),
+            'view_item'             => __('Vis Bruger', 'rigtig-for-mig'),
+            'all_items'             => __('Alle Brugere', 'rigtig-for-mig'),
+            'search_items'          => __('Søg Brugere', 'rigtig-for-mig'),
+            'not_found'             => __('Ingen brugere fundet.', 'rigtig-for-mig'),
+            'not_found_in_trash'    => __('Ingen brugere fundet i papirkurv.', 'rigtig-for-mig'),
+            'featured_image'        => _x('Profilbillede', 'Overrides the "Featured Image" phrase', 'rigtig-for-mig'),
+            'set_featured_image'    => _x('Sæt profilbillede', 'Overrides the "Set featured image" phrase', 'rigtig-for-mig'),
+            'remove_featured_image' => _x('Fjern profilbillede', 'Overrides the "Remove featured image" phrase', 'rigtig-for-mig'),
+            'use_featured_image'    => _x('Brug som profilbillede', 'Overrides the "Use as featured image" phrase', 'rigtig-for-mig'),
+        );
+
+        $args = array(
+            'labels'             => $labels,
+            'description'        => __('Bruger profiler for Rigtig for mig markedsplads', 'rigtig-for-mig'),
+            'public'             => false,  // Not public - only admin access
+            'publicly_queryable' => false,
+            'show_ui'            => true,
+            'show_in_menu'       => true,
+            'query_var'          => true,
+            'rewrite'            => false,
+            'capability_type'    => 'post',
+            'has_archive'        => false,
+            'hierarchical'       => false,
+            'menu_position'      => 6,
+            'menu_icon'          => 'dashicons-groups',
+            'supports'           => array('title', 'thumbnail'),
+            'show_in_rest'       => true,
+        );
+
+        register_post_type('rfm_bruger', $args);
+
+        // Add custom meta boxes
+        add_action('add_meta_boxes', array(__CLASS__, 'add_user_meta_boxes'));
+        add_action('save_post_rfm_bruger', array(__CLASS__, 'save_user_meta'), 10, 2);
+    }
+
+    /**
+     * Add custom meta boxes for user profiles
+     */
+    public static function add_user_meta_boxes() {
+        // Profile Information
+        add_meta_box(
+            'rfm_user_profile_info',
+            __('Profil Information', 'rigtig-for-mig'),
+            array(__CLASS__, 'render_user_profile_info_meta_box'),
+            'rfm_bruger',
+            'normal',
+            'high'
+        );
+
+        // Bio
+        add_meta_box(
+            'rfm_user_bio',
+            __('Bio / Om Mig', 'rigtig-for-mig'),
+            array(__CLASS__, 'render_user_bio_meta_box'),
+            'rfm_bruger',
+            'normal',
+            'high'
+        );
+
+        // WordPress User Link & Status
+        add_meta_box(
+            'rfm_user_status',
+            __('Login & Status', 'rigtig-for-mig'),
+            array(__CLASS__, 'render_user_status_meta_box'),
+            'rfm_bruger',
+            'side',
+            'high'
+        );
+    }
+
+    /**
+     * Render user profile information meta box
+     */
+    public static function render_user_profile_info_meta_box($post) {
+        wp_nonce_field('rfm_user_meta_nonce', 'rfm_user_meta_nonce');
+
+        $phone = get_post_meta($post->ID, '_rfm_phone', true);
+        $email = get_post_meta($post->ID, '_rfm_email', true);
+        $email_verified = get_post_meta($post->ID, '_rfm_email_verified', true);
+
+        ?>
+        <table class="form-table">
+            <tr>
+                <th><label for="rfm_user_email"><?php _e('Email', 'rigtig-for-mig'); ?></label></th>
+                <td>
+                    <input type="email" id="rfm_user_email" name="rfm_user_email" value="<?php echo esc_attr($email); ?>" class="regular-text" required />
+                    <?php if ($email_verified === '1'): ?>
+                        <span class="dashicons dashicons-yes-alt" style="color: green;"></span>
+                        <span style="color: green;"><?php _e('Verificeret', 'rigtig-for-mig'); ?></span>
+                    <?php else: ?>
+                        <span class="dashicons dashicons-warning" style="color: orange;"></span>
+                        <span style="color: orange;"><?php _e('Ikke verificeret', 'rigtig-for-mig'); ?></span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="rfm_user_phone"><?php _e('Telefon', 'rigtig-for-mig'); ?></label></th>
+                <td><input type="tel" id="rfm_user_phone" name="rfm_user_phone" value="<?php echo esc_attr($phone); ?>" class="regular-text" /></td>
+            </tr>
+            <tr>
+                <th><label for="rfm_user_email_verified"><?php _e('Email Verificeret', 'rigtig-for-mig'); ?></label></th>
+                <td>
+                    <label>
+                        <input type="checkbox" id="rfm_user_email_verified" name="rfm_user_email_verified" value="1" <?php checked($email_verified, '1'); ?> />
+                        <?php _e('Ja, email er verificeret', 'rigtig-for-mig'); ?>
+                    </label>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+
+    /**
+     * Render user bio meta box
+     */
+    public static function render_user_bio_meta_box($post) {
+        $bio = get_post_meta($post->ID, '_rfm_bio', true);
+
+        ?>
+        <p><em><?php _e('Fortæl lidt om dig selv.', 'rigtig-for-mig'); ?></em></p>
+        <textarea id="rfm_user_bio" name="rfm_user_bio" rows="10" style="width: 100%;"><?php echo esc_textarea($bio); ?></textarea>
+        <?php
+    }
+
+    /**
+     * Render user status meta box (WordPress user link)
+     */
+    public static function render_user_status_meta_box($post) {
+        $wp_user_id = get_post_meta($post->ID, '_rfm_wp_user_id', true);
+        $account_created = get_post_meta($post->ID, '_rfm_account_created_at', true);
+        $last_login = get_post_meta($post->ID, '_rfm_last_login', true);
+
+        ?>
+        <p>
+            <label for="rfm_wp_user_id"><strong><?php _e('WordPress User ID', 'rigtig-for-mig'); ?></strong></label><br>
+            <input type="number" id="rfm_wp_user_id" name="rfm_wp_user_id" value="<?php echo esc_attr($wp_user_id); ?>" style="width: 100%;" />
+            <small><?php _e('ID på den WordPress bruger der logger ind', 'rigtig-for-mig'); ?></small>
+        </p>
+
+        <?php if ($wp_user_id):
+            $wp_user = get_user_by('ID', $wp_user_id);
+            if ($wp_user): ?>
+                <p>
+                    <strong><?php _e('WordPress Bruger:', 'rigtig-for-mig'); ?></strong><br>
+                    <?php echo esc_html($wp_user->user_login); ?><br>
+                    <a href="<?php echo get_edit_user_link($wp_user_id); ?>" target="_blank"><?php _e('Rediger WP bruger', 'rigtig-for-mig'); ?></a>
+                </p>
+            <?php endif;
+        endif; ?>
+
+        <hr>
+
+        <p>
+            <strong><?php _e('Konto Oprettet:', 'rigtig-for-mig'); ?></strong><br>
+            <?php echo $account_created ? esc_html($account_created) : __('Ikke angivet', 'rigtig-for-mig'); ?>
+        </p>
+
+        <p>
+            <strong><?php _e('Sidste Login:', 'rigtig-for-mig'); ?></strong><br>
+            <?php echo $last_login ? esc_html($last_login) : __('Aldrig', 'rigtig-for-mig'); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Save user meta data
+     */
+    public static function save_user_meta($post_id, $post) {
+        // Verify nonce
+        if (!isset($_POST['rfm_user_meta_nonce']) || !wp_verify_nonce($_POST['rfm_user_meta_nonce'], 'rfm_user_meta_nonce')) {
+            return;
+        }
+
+        // Check autosave
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+
+        // Check permissions
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+
+        // Save profile information
+        if (isset($_POST['rfm_user_email'])) {
+            update_post_meta($post_id, '_rfm_email', sanitize_email($_POST['rfm_user_email']));
+        }
+
+        if (isset($_POST['rfm_user_phone'])) {
+            update_post_meta($post_id, '_rfm_phone', sanitize_text_field($_POST['rfm_user_phone']));
+        }
+
+        if (isset($_POST['rfm_user_bio'])) {
+            update_post_meta($post_id, '_rfm_bio', sanitize_textarea_field($_POST['rfm_user_bio']));
+        }
+
+        // Save email verified status
+        $email_verified = isset($_POST['rfm_user_email_verified']) ? '1' : '0';
+        update_post_meta($post_id, '_rfm_email_verified', $email_verified);
+
+        // If verified, save timestamp
+        if ($email_verified === '1' && !get_post_meta($post_id, '_rfm_email_verified_at', true)) {
+            update_post_meta($post_id, '_rfm_email_verified_at', current_time('mysql'));
+        }
+
+        // Save WordPress user ID link
+        if (isset($_POST['rfm_wp_user_id'])) {
+            update_post_meta($post_id, '_rfm_wp_user_id', intval($_POST['rfm_wp_user_id']));
         }
     }
 }

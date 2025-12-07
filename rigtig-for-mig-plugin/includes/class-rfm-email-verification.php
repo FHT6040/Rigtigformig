@@ -209,19 +209,19 @@ Med venlig hilsen,
         
         // Handle user verification
         if ($verify_type === 'user_email' && $verification->expert_id == 0) {
-            // Update user meta
-            update_user_meta($verification->user_id, 'rfm_email_verified', 1);
+            // Update using unified migration helper (sets post_meta on Custom Post Type)
+            RFM_Migration::set_user_verified($verification->user_id, true);
             update_user_meta($verification->user_id, 'rfm_account_status', 'active');
-            
+
             // Trigger action
             do_action('rfm_user_email_verified', $verification->user_id);
-            
+
             // Redirect to login with success message
             $redirect_url = add_query_arg(
                 array('verified' => 'success'),
                 home_url('/login')
             );
-            
+
             wp_safe_redirect($redirect_url);
             exit;
         }

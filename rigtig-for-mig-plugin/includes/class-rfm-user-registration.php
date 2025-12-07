@@ -387,28 +387,32 @@ class RFM_User_Registration {
         // Set user role
         $user = new WP_User($user_id);
         $user->set_role('rfm_user');
-        
-        // Create user profile
-        global $wpdb;
-        $table = $wpdb->prefix . 'rfm_user_profiles';
-        
-        $wpdb->insert($table, array(
-            'user_id' => $user_id,
-            'gdpr_consent' => $gdpr_consent,
-            'gdpr_consent_date' => current_time('mysql'),
-            'account_created_at' => current_time('mysql')
-        ));
-        
+
+        // Create user profile (Custom Post Type)
+        $profile_post_id = RFM_Migration::create_user_profile_on_registration($user_id, $email, $username);
+
+        if (!$profile_post_id) {
+            // Rollback: delete WordPress user if profile creation failed
+            wp_delete_user($user_id);
+            wp_send_json_error(array(
+                'message' => __('Der opstod en fejl ved oprettelse af profil. Prøv igen.', 'rigtig-for-mig')
+            ));
+        }
+
+        // Save GDPR consent to profile post meta
+        update_post_meta($profile_post_id, '_rfm_gdpr_consent', $gdpr_consent);
+        update_post_meta($profile_post_id, '_rfm_gdpr_consent_date', current_time('mysql'));
+
         // Send verification email
         $verification = RFM_Email_Verification::get_instance();
         $token = $verification->create_verification_token($user_id, 0, $email);
-        
+
         if ($token) {
             $verification->send_user_verification_email($email, $token, 'user');
         }
 
-        // Set user as unverified using helper method
-        RFM_Email_Verification::set_user_verified($user_id, false);
+        // Set user as unverified (now stored in post_meta)
+        RFM_Migration::set_user_verified($user_id, false);
         update_user_meta($user_id, 'rfm_account_status', 'pending_verification');
         
         wp_send_json_success(array(
@@ -455,7 +459,7 @@ class RFM_User_Registration {
             ));
         }
         
-        // Check if email is verified (different check for experts vs users)
+        // Check if email is verified (unified check using Custom Post Type)
         $verified = false;
 
         if (in_array('rfm_expert_user', $user->roles)) {
@@ -471,8 +475,8 @@ class RFM_User_Registration {
                 $verified = (bool) get_post_meta($expert_posts[0]->ID, '_rfm_email_verified', true);
             }
         } else {
-            // For regular users: Check user meta
-            $verified = (bool) get_user_meta($user->ID, 'rfm_email_verified', true);
+            // For regular users: Check using unified migration helper
+            $verified = RFM_Migration::is_user_verified($user->ID);
         }
 
         if (!$verified) {
@@ -485,15 +489,10 @@ class RFM_User_Registration {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, $remember);
         do_action('wp_login', $user->user_login, $user);
-        
-        // Update last login
+
+        // Update last login (using unified migration helper)
         if (in_array('rfm_user', $user->roles)) {
-            global $wpdb;
-            $table = $wpdb->prefix . 'rfm_user_profiles';
-            $wpdb->update($table, 
-                array('last_login' => current_time('mysql')),
-                array('user_id' => $user->ID)
-            );
+            RFM_Migration::update_last_login($user->ID);
         }
         
         // Determine redirect based on role

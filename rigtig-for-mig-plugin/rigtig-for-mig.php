@@ -3,7 +3,7 @@
  * Plugin Name: Rigtig for mig - Ekspert Markedsplads
  * Plugin URI: https://rigtigformig.dk
  * Description: En komplet markedsplads for terapeuter, coaches, mentorer og vejledere med profilsider, ratings, abonnementer og multi-language support.
- * Version: 3.2.3
+ * Version: 3.3.0
  * Author: Rigtig for mig
  * Author URI: https://rigtigformig.dk
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('RFM_VERSION', '3.2.3');
+define('RFM_VERSION', '3.3.0');
 define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -56,6 +56,7 @@ class Rigtig_For_Mig {
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-post-types.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-taxonomies.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-database.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-migration.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-email-verification.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-subscriptions.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-ratings.php';
@@ -69,13 +70,15 @@ class Rigtig_For_Mig {
         
         // User system classes
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-registration.php';
-        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-dashboard.php';
+        // NOTE: class-rfm-user-dashboard.php is DISABLED in v3.3.0 - replaced by Custom Post Type system
+        // require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-dashboard.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-contact-protection.php';
         
         // Admin classes
         require_once RFM_PLUGIN_DIR . 'admin/class-rfm-admin.php';
         require_once RFM_PLUGIN_DIR . 'admin/class-rfm-admin-settings.php';
         require_once RFM_PLUGIN_DIR . 'admin/class-rfm-user-admin.php';
+        require_once RFM_PLUGIN_DIR . 'admin/class-rfm-migration-admin.php';
         
         if (is_admin()) {
             // Additional admin-only code can go here
