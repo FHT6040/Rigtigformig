@@ -354,49 +354,57 @@ class RFM_Expert_Profile {
                 <div class="rfm-detail-section">
                     <h3><?php _e('Uddannelser', 'rigtig-for-mig'); ?></h3>
                     <div class="rfm-educations-list">
-                        <?php foreach ($all_educations as $education): ?>
-                            <div class="rfm-education-item">
-                                <?php if (!empty($education['title'])): ?>
-                                    <h4 class="rfm-education-title"><?php echo esc_html($education['title']); ?></h4>
-                                <?php endif; ?>
-                                
-                                <div class="rfm-education-years">
-                                    <?php 
-                                    if (!empty($education['start_year']) || !empty($education['end_year'])) {
-                                        $start = !empty($education['start_year']) ? esc_html($education['start_year']) : '?';
-                                        $end = !empty($education['end_year']) ? esc_html($education['end_year']) : __('Nu', 'rigtig-for-mig');
-                                        echo $start . ' - ' . $end;
-                                    }
-                                    ?>
-                                </div>
-                                
-                                <?php if (!empty($education['institution'])): ?>
-                                    <p class="rfm-education-institution"><strong><?php echo esc_html($education['institution']); ?></strong></p>
-                                <?php endif; ?>
-                                
+                        <?php foreach ($all_educations as $education):
+                            // Build the header line: "Institution | v/Instructor" format (v3.4.1)
+                            $header_parts = array();
+                            if (!empty($education['institution'])) {
+                                $header_parts[] = esc_html($education['institution']);
+                            }
+                            if (!empty($education['instructor'])) {
+                                $header_parts[] = 'v/' . esc_html($education['instructor']);
+                            } elseif (!empty($education['title']) && !empty($education['institution'])) {
+                                // Use title as instructor name if institution exists
+                                $header_parts[] = 'v/' . esc_html($education['title']);
+                            }
+
+                            // If no institution but title exists, use title as main header
+                            if (empty($education['institution']) && !empty($education['title'])) {
+                                $header_text = esc_html($education['title']);
+                            } else {
+                                $header_text = implode(' | ', $header_parts);
+                            }
+
+                            $has_certificate = !empty($education['image_id']);
+                        ?>
+                            <div class="rfm-education-item <?php echo $has_certificate ? 'has-certificate' : ''; ?>">
+
                                 <div class="rfm-education-content">
-                                    <?php 
+                                    <?php
                                     // Show certificate image to the right if it exists
-                                    if (!empty($education['image_id'])): 
+                                    if ($has_certificate):
                                         $image_id = $education['image_id'];
                                         $image_url = wp_get_attachment_image_url($image_id, 'medium');
                                         $image_full = wp_get_attachment_image_url($image_id, 'full');
-                                        if ($image_url): 
+                                        if ($image_url):
                                     ?>
                                         <div class="rfm-education-certificate rfm-float-right">
                                             <a href="<?php echo esc_url($image_full); ?>" class="rfm-certificate-link" target="_blank" title="<?php esc_attr_e('Se certifikat i fuld størrelse', 'rigtig-for-mig'); ?>">
                                                 <img src="<?php echo esc_url($image_url); ?>" alt="<?php esc_attr_e('Diplom/Certifikat', 'rigtig-for-mig'); ?>" class="rfm-certificate-img" />
                                             </a>
                                         </div>
-                                    <?php 
+                                    <?php
                                         endif;
-                                    endif; 
+                                    endif;
                                     ?>
-                                    
-                                    <?php if (!empty($education['description'])): ?>
-                                        <p class="rfm-education-description"><?php echo nl2br(esc_html($education['description'])); ?></p>
+
+                                    <?php if (!empty($header_text)): ?>
+                                        <p class="rfm-education-header"><strong><?php echo $header_text; ?></strong></p>
                                     <?php endif; ?>
-                                    
+
+                                    <?php if (!empty($education['description'])): ?>
+                                        <div class="rfm-education-description"><?php echo nl2br(esc_html($education['description'])); ?></div>
+                                    <?php endif; ?>
+
                                     <div class="rfm-clear"></div>
                                 </div>
                             </div>
