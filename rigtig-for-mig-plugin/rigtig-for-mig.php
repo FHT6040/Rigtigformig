@@ -1,0 +1,351 @@
+<?php
+/**
+ * Plugin Name: Rigtig for mig - Ekspert Markedsplads
+ * Plugin URI: https://rigtigformig.dk
+ * Description: En komplet markedsplads for terapeuter, coaches, mentorer og vejledere med profilsider, ratings, abonnementer og multi-language support.
+ * Version: 3.4.1
+ * Author: Rigtig for mig
+ * Author URI: https://rigtigformig.dk
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: rigtig-for-mig
+ * Domain Path: /languages
+ */
+
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+// Plugin constants
+define('RFM_VERSION', '3.4.1');
+define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
+
+/**
+ * Main Plugin Class
+ */
+class Rigtig_For_Mig {
+    
+    private static $instance = null;
+    
+    /**
+     * Get singleton instance
+     */
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    /**
+     * Constructor
+     */
+    private function __construct() {
+        $this->load_dependencies();
+        $this->init_hooks();
+    }
+    
+    /**
+     * Load required files
+     */
+    private function load_dependencies() {
+        // Core classes
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-post-types.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-taxonomies.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-database.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-migration.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-upload-manager.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-email-verification.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-subscriptions.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-ratings.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-profile.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-frontend-registration.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-flexible-fields.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-bulk-import.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-password-reset.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-online-status.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-category-profiles.php';
+        
+        // User system classes
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-registration.php';
+        // NOTE: class-rfm-user-dashboard.php is DISABLED in v3.3.0 - replaced by Custom Post Type system
+        // require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-dashboard.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-contact-protection.php';
+        
+        // Admin classes
+        require_once RFM_PLUGIN_DIR . 'admin/class-rfm-admin.php';
+        require_once RFM_PLUGIN_DIR . 'admin/class-rfm-admin-settings.php';
+        require_once RFM_PLUGIN_DIR . 'admin/class-rfm-user-admin.php';
+        require_once RFM_PLUGIN_DIR . 'admin/class-rfm-migration-admin.php';
+        
+        if (is_admin()) {
+            // Additional admin-only code can go here
+        }
+        
+        // Public classes
+        require_once RFM_PLUGIN_DIR . 'public/class-rfm-public.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-shortcodes.php';
+    }
+    
+    /**
+     * Initialize hooks
+     */
+    private function init_hooks() {
+        // Activation/Deactivation
+        register_activation_hook(__FILE__, array($this, 'activate'));
+        register_deactivation_hook(__FILE__, array($this, 'deactivate'));
+        
+        // Load text domain
+        add_action('plugins_loaded', array($this, 'load_textdomain'));
+        
+        // Initialize components
+        add_action('init', array($this, 'init_components'));
+        
+        // Enqueue scripts and styles
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_public_assets'));
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+    }
+    
+    /**
+     * Plugin activation
+     */
+    public function activate() {
+        // Create custom tables
+        RFM_Database::create_tables();
+        
+        // Register post types and taxonomies
+        RFM_Post_Types::register();
+        RFM_Taxonomies::register();
+        
+        // Flush rewrite rules
+        flush_rewrite_rules();
+        
+        // Set default options
+        $this->set_default_options();
+    }
+    
+    /**
+     * Plugin deactivation
+     */
+    public function deactivate() {
+        // Flush rewrite rules
+        flush_rewrite_rules();
+    }
+    
+    /**
+     * Set default plugin options
+     */
+    private function set_default_options() {
+        $defaults = array(
+            'rfm_free_features' => array(
+                'basic_profile',
+                'single_category',
+                'basic_listing'
+            ),
+            'rfm_standard_price' => 219,
+            'rfm_standard_features' => array(
+                'enhanced_profile',
+                'multiple_categories',
+                'featured_badge',
+                'basic_analytics'
+            ),
+            'rfm_premium_price' => 399,
+            'rfm_premium_features' => array(
+                'premium_profile',
+                'unlimited_categories',
+                'top_placement',
+                'advanced_analytics',
+                'priority_support'
+            ),
+            'rfm_currency' => 'DKK',
+            'rfm_email_verification' => true
+        );
+        
+        foreach ($defaults as $key => $value) {
+            if (get_option($key) === false) {
+                add_option($key, $value);
+            }
+        }
+    }
+    
+    /**
+     * Load text domain for translations
+     */
+    public function load_textdomain() {
+        load_plugin_textdomain(
+            'rigtig-for-mig',
+            false,
+            dirname(RFM_PLUGIN_BASENAME) . '/languages/'
+        );
+    }
+    
+    /**
+     * Initialize plugin components
+     */
+    public function init_components() {
+        // Register post types and taxonomies
+        RFM_Post_Types::register();
+        RFM_Taxonomies::register();
+        
+        // Initialize other components
+        RFM_Email_Verification::get_instance();
+        RFM_Subscriptions::get_instance();
+        RFM_Ratings::get_instance();
+        RFM_Expert_Profile::get_instance();
+        RFM_Shortcodes::get_instance();
+        RFM_Frontend_Registration::get_instance();
+        RFM_Flexible_Fields_System::get_instance();
+        RFM_Password_Reset::get_instance();
+        RFM_Online_Status::get_instance();
+        RFM_Category_Profiles::get_instance();
+        
+        // Initialize user system
+        RFM_User_Registration::get_instance();
+        // RFM_User_Dashboard::get_instance(); // DISABLED in v3.3.0 - replaced by Custom Post Type
+        RFM_Contact_Protection::get_instance();
+
+        // Initialize upload manager (v3.4.0)
+        RFM_Upload_Manager::get_instance();
+        
+        // Initialize bulk import (admin only)
+        if (is_admin()) {
+            RFM_Bulk_Import::init();
+        }
+        
+        // Initialize admin settings
+        RFM_Admin_Settings::init();
+        
+        // Register Elementor widgets if Elementor is active
+        add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
+        
+        if (is_admin()) {
+            RFM_Admin::get_instance();
+            RFM_User_Admin::get_instance();
+        } else {
+            RFM_Public::get_instance();
+        }
+    }
+    
+    /**
+     * Register Elementor widgets
+     */
+    public function register_elementor_widgets($widgets_manager) {
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-elementor-widget.php';
+        $widgets_manager->register(new RFM_Elementor_Expert_Widget());
+    }
+    
+    /**
+     * Enqueue public assets
+     */
+    public function enqueue_public_assets() {
+        // Note: Public assets are now enqueued by RFM_Public class
+        // This method is kept for backwards compatibility and can be used for global assets
+    }
+    
+    /**
+     * Enqueue admin assets
+     */
+    public function enqueue_admin_assets($hook) {
+        wp_enqueue_style(
+            'rfm-admin-styles',
+            RFM_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            RFM_VERSION
+        );
+        
+        wp_enqueue_script(
+            'rfm-admin-scripts',
+            RFM_PLUGIN_URL . 'assets/js/admin.js',
+            array('jquery'),
+            RFM_VERSION,
+            true
+        );
+    }
+}
+
+/**
+ * Initialize the plugin
+ */
+function rfm_init() {
+    return Rigtig_For_Mig::get_instance();
+}
+
+/**
+ * Plugin activation
+ */
+function rfm_activate() {
+    // Create database tables
+    require_once RFM_PLUGIN_DIR . 'includes/class-rfm-database.php';
+    RFM_Database::create_tables();
+    
+    // Register post types and taxonomies
+    require_once RFM_PLUGIN_DIR . 'includes/class-rfm-post-types.php';
+    require_once RFM_PLUGIN_DIR . 'includes/class-rfm-taxonomies.php';
+    RFM_Post_Types::register();
+    RFM_Taxonomies::register();
+    
+    // Create expert user role
+    rfm_create_expert_role();
+    
+    // Create regular user role
+    rfm_create_user_role();
+    
+    // Flush rewrite rules
+    flush_rewrite_rules();
+}
+
+/**
+ * Create expert user role
+ */
+function rfm_create_expert_role() {
+    // Remove role first to ensure clean registration
+    remove_role('rfm_expert_user');
+    
+    // Add role with capabilities
+    add_role(
+        'rfm_expert_user',
+        __('Ekspert', 'rigtig-for-mig'),
+        array(
+            'read' => true,
+            'edit_posts' => true,
+            'edit_published_posts' => true,
+            'delete_posts' => false,
+            'upload_files' => true,
+        )
+    );
+}
+
+/**
+ * Create regular user role
+ */
+function rfm_create_user_role() {
+    // Remove role first to ensure clean registration
+    remove_role('rfm_user');
+    
+    // Add role with capabilities
+    add_role(
+        'rfm_user',
+        __('Bruger', 'rigtig-for-mig'),
+        array(
+            'read' => true,
+        )
+    );
+}
+
+/**
+ * Plugin deactivation
+ */
+function rfm_deactivate() {
+    // Flush rewrite rules
+    flush_rewrite_rules();
+}
+
+// Register hooks
+register_activation_hook(__FILE__, 'rfm_activate');
+register_deactivation_hook(__FILE__, 'rfm_deactivate');
+
+// Start the plugin
+rfm_init();
