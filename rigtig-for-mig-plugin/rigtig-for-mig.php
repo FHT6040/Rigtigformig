@@ -74,8 +74,7 @@ class Rigtig_For_Mig {
         
         // User system classes
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-registration.php';
-        // NOTE: class-rfm-user-dashboard.php is DISABLED in v3.3.0 - replaced by Custom Post Type system
-        // require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-dashboard.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-dashboard.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-contact-protection.php';
         
         // Admin classes
