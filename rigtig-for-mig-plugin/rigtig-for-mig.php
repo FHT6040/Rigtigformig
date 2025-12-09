@@ -10,6 +10,9 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: rigtig-for-mig
  * Domain Path: /languages
+ * Author: Frank H.
+ * GitHub Plugin URI: FHT6040/Rigtigformig
+ * Primary Branch: main
  */
 
 // Exit if accessed directly
