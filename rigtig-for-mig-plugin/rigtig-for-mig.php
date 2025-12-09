@@ -26,6 +26,21 @@ define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
+// Debug mode - only enable in development
+define('RFM_DEBUG', defined('WP_DEBUG') && WP_DEBUG);
+
+/**
+ * Helper function for conditional logging
+ * Only logs when RFM_DEBUG is true
+ *
+ * @param string $message Log message
+ */
+function rfm_log($message) {
+    if (RFM_DEBUG) {
+        error_log('RFM: ' . $message);
+    }
+}
+
 /**
  * Main Plugin Class
  */

@@ -27,44 +27,82 @@ class RFM_Frontend_Registration {
         add_shortcode('rfm_expert_login', array($this, 'login_form_shortcode'));
         add_shortcode('rfm_expert_profile_edit', array($this, 'profile_edit_shortcode'));
         add_shortcode('rfm_expert_dashboard_tabbed', array($this, 'tabbed_dashboard_shortcode'));
-        
+
+        // Enqueue scripts
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
+
         // AJAX handlers
         add_action('wp_ajax_rfm_submit_expert_registration', array($this, 'handle_registration'));
         add_action('wp_ajax_nopriv_rfm_submit_expert_registration', array($this, 'handle_registration'));
-        
+
         add_action('wp_ajax_rfm_expert_login', array($this, 'handle_login'));
         add_action('wp_ajax_nopriv_rfm_expert_login', array($this, 'handle_login'));
-        
+
         add_action('wp_ajax_rfm_update_expert_profile', array($this, 'handle_profile_update'));
-        
+
         add_action('wp_ajax_rfm_update_dashboard_profile', array($this, 'handle_dashboard_profile_update'));
-        
+
         add_action('wp_ajax_rfm_upload_education_image', array($this, 'handle_education_image_upload'));
-        
+
         add_action('wp_ajax_rfm_expert_logout', array($this, 'handle_logout'));
-        
+
         // Add expert role
         add_action('init', array($this, 'add_expert_role'));
-        
+
         // Custom login redirect
         add_filter('login_redirect', array($this, 'expert_login_redirect'), 10, 3);
-        
+
         // Custom logout redirect
         add_filter('logout_redirect', array($this, 'expert_logout_redirect'), 10, 3);
-        
+
         // Hide admin bar for experts - multiple hooks to ensure it works
         add_action('after_setup_theme', array($this, 'hide_admin_bar_for_experts'));
         add_filter('show_admin_bar', array($this, 'hide_admin_bar_filter'));
         add_action('init', array($this, 'remove_admin_bar_for_experts'), 9);
-        
+
         // Add body class for experts
         add_filter('body_class', array($this, 'add_expert_body_class'));
-        
+
         // Block admin access for experts
         add_action('admin_init', array($this, 'block_admin_access_for_experts'));
-        
+
         // Redirect experts away from wp-login.php
         add_action('login_init', array($this, 'redirect_experts_from_wp_login'));
+    }
+
+    /**
+     * Enqueue expert forms scripts
+     */
+    public function enqueue_scripts() {
+        global $post;
+        if (!is_a($post, 'WP_Post')) {
+            return;
+        }
+
+        // Check if page has expert login or registration shortcode
+        if (has_shortcode($post->post_content, 'rfm_expert_login') ||
+            has_shortcode($post->post_content, 'rfm_expert_registration')) {
+
+            wp_enqueue_script(
+                'rfm-expert-forms',
+                RFM_PLUGIN_URL . 'assets/js/expert-forms.js',
+                array('jquery'),
+                RFM_VERSION,
+                true
+            );
+
+            wp_localize_script('rfm-expert-forms', 'rfmExpertForms', array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'strings' => array(
+                    'loggingIn' => __('Logger ind...', 'rigtig-for-mig'),
+                    'login' => __('Log ind', 'rigtig-for-mig'),
+                    'error' => __('Der opstod en fejl. Prøv igen.', 'rigtig-for-mig'),
+                    'passwordMismatch' => __('Adgangskoderne matcher ikke.', 'rigtig-for-mig'),
+                    'creating' => __('Opretter...', 'rigtig-for-mig'),
+                    'createProfile' => __('Opret Profil', 'rigtig-for-mig')
+                )
+            ));
+        }
     }
     
     /**
