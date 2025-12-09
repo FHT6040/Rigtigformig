@@ -206,7 +206,7 @@ class Rigtig_For_Mig {
         
         // Initialize user system
         RFM_User_Registration::get_instance();
-        // RFM_User_Dashboard::get_instance(); // DISABLED in v3.3.0 - replaced by Custom Post Type
+        RFM_User_Dashboard::get_instance();
         RFM_Contact_Protection::get_instance();
 
         // Initialize upload manager (v3.4.0)
