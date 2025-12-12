@@ -21,8 +21,8 @@ class RFM_User_Dashboard {
     }
     
     private function __construct() {
-        // Register shortcode with priority to ensure it loads
-        add_action('init', array($this, 'register_shortcodes'), 5);
+        // Register shortcode immediately (not hooked, since class is instantiated during init)
+        $this->register_shortcodes();
 
         // Enqueue scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
