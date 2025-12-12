@@ -116,8 +116,11 @@ class RFM_User_Admin {
         ));
 
         // IMPORTANT: Auto-sync verification status BEFORE calculating stats
+        // Cache bust: v3.4.4-001
+        rfm_log("RFM ADMIN: Starting auto-sync check for " . count($users) . " users");
         foreach ($users as $user) {
             $verified = RFM_Email_Verification::is_user_verified($user->ID);
+            rfm_log("RFM ADMIN: User {$user->ID} verification status: " . ($verified ? 'YES' : 'NO'));
             if (!$verified) {
                 // Check WordPress native email verification
                 $wp_email_verified = get_user_meta($user->ID, 'email_verified', true);
@@ -132,6 +135,7 @@ class RFM_User_Admin {
                 }
             }
         }
+        rfm_log("RFM ADMIN: Auto-sync check completed");
 
         $total_users = count($users);
 
