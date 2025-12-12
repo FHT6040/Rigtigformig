@@ -55,7 +55,34 @@ class RFM_Upload_Manager {
      * @return array Modified upload directories
      */
     public function custom_upload_directory($dirs) {
-        // Get current post being edited
+        // Check if this is a user avatar upload via AJAX
+        if (defined('DOING_AJAX') && DOING_AJAX) {
+            $action = isset($_REQUEST['action']) ? $_REQUEST['action'] : '';
+
+            // User avatar upload from frontend dashboard
+            if ($action === 'rfm_upload_user_avatar') {
+                $custom_dir = '/brugere';
+                $dirs['path'] = $dirs['basedir'] . $custom_dir;
+                $dirs['url'] = $dirs['baseurl'] . $custom_dir;
+                $dirs['subdir'] = $custom_dir;
+
+                rfm_log("RFM Upload: Redirecting user avatar upload to {$dirs['path']}");
+                return $dirs;
+            }
+
+            // Expert profile image upload
+            if ($action === 'rfm_upload_expert_avatar' || $action === 'rfm_upload_expert_image') {
+                $custom_dir = '/eksperter';
+                $dirs['path'] = $dirs['basedir'] . $custom_dir;
+                $dirs['url'] = $dirs['baseurl'] . $custom_dir;
+                $dirs['subdir'] = $custom_dir;
+
+                rfm_log("RFM Upload: Redirecting expert upload to {$dirs['path']}");
+                return $dirs;
+            }
+        }
+
+        // Get current post being edited (admin context)
         $post_id = $this->get_current_post_id();
 
         if (!$post_id) {
@@ -71,7 +98,7 @@ class RFM_Upload_Manager {
             $dirs['url'] = $dirs['baseurl'] . $custom_dir;
             $dirs['subdir'] = $custom_dir;
 
-            error_log("RFM Upload: Redirecting expert upload to {$dirs['path']}");
+            rfm_log("RFM Upload: Redirecting expert post upload to {$dirs['path']}");
 
         } elseif ($post_type === 'rfm_bruger') {
             $custom_dir = '/brugere';
@@ -79,7 +106,7 @@ class RFM_Upload_Manager {
             $dirs['url'] = $dirs['baseurl'] . $custom_dir;
             $dirs['subdir'] = $custom_dir;
 
-            error_log("RFM Upload: Redirecting user upload to {$dirs['path']}");
+            rfm_log("RFM Upload: Redirecting user post upload to {$dirs['path']}");
         }
 
         return $dirs;

@@ -29,6 +29,7 @@ class RFM_User_Admin {
         add_action('wp_ajax_rfm_delete_user_admin', array($this, 'handle_admin_delete_user'));
         add_action('wp_ajax_rfm_toggle_user_status', array($this, 'handle_toggle_user_status'));
         add_action('wp_ajax_rfm_export_user_data', array($this, 'handle_export_user_data'));
+        add_action('wp_ajax_rfm_verify_user', array($this, 'handle_verify_user'));
     }
     
     /**
@@ -221,6 +222,9 @@ class RFM_User_Admin {
                                         <span style="color: green;">✓ <?php _e('Ja', 'rigtig-for-mig'); ?></span>
                                     <?php else: ?>
                                         <span style="color: orange;">⏳ <?php _e('Afventende', 'rigtig-for-mig'); ?></span>
+                                        <button class="button button-small rfm-verify-user" data-user-id="<?php echo $user->ID; ?>" style="margin-left: 5px;">
+                                            <?php _e('Verificer', 'rigtig-for-mig'); ?>
+                                        </button>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -269,11 +273,11 @@ class RFM_User_Admin {
             $('.rfm-delete-user').on('click', function() {
                 const userId = $(this).data('user-id');
                 const username = $(this).data('username');
-                
+
                 if (!confirm('Er du sikker på at du vil slette brugeren "' + username + '"? Dette kan ikke fortrydes!')) {
                     return;
                 }
-                
+
                 $.ajax({
                     url: ajaxurl,
                     type: 'POST',
@@ -291,7 +295,37 @@ class RFM_User_Admin {
                     }
                 });
             });
-            
+
+            // Verify user
+            $('.rfm-verify-user').on('click', function() {
+                const userId = $(this).data('user-id');
+                const $button = $(this);
+
+                $button.prop('disabled', true).text('Verificerer...');
+
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'rfm_verify_user',
+                        user_id: userId,
+                        _wpnonce: '<?php echo wp_create_nonce('rfm_verify_user'); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            window.location.reload();
+                        } else {
+                            alert(response.data.message);
+                            $button.prop('disabled', false).text('Verificer');
+                        }
+                    },
+                    error: function() {
+                        alert('Der opstod en fejl');
+                        $button.prop('disabled', false).text('Verificer');
+                    }
+                });
+            });
+
             // Export users
             $('#rfm-export-users').on('click', function() {
                 window.location.href = ajaxurl + '?action=rfm_export_user_data&_wpnonce=' + '<?php echo wp_create_nonce('rfm_export_user_data'); ?>';
@@ -393,5 +427,29 @@ class RFM_User_Admin {
         
         fclose($output);
         exit;
+    }
+
+    /**
+     * Handle manual user verification
+     */
+    public function handle_verify_user() {
+        check_ajax_referer('rfm_verify_user');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Ingen tilladelse', 'rigtig-for-mig')));
+        }
+
+        $user_id = intval($_POST['user_id']);
+
+        if (!$user_id) {
+            wp_send_json_error(array('message' => __('Ugyldig bruger ID', 'rigtig-for-mig')));
+        }
+
+        // Verify the user by setting the meta
+        update_user_meta($user_id, 'rfm_email_verified', '1');
+
+        rfm_log("RFM: Admin manually verified user ID $user_id");
+
+        wp_send_json_success(array('message' => __('Bruger verificeret', 'rigtig-for-mig')));
     }
 }
