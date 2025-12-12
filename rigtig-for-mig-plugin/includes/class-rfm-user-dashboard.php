@@ -21,8 +21,8 @@ class RFM_User_Dashboard {
     }
     
     private function __construct() {
-        // Shortcodes
-        add_shortcode('rfm_user_dashboard', array($this, 'dashboard_shortcode'));
+        // Register shortcode with priority to ensure it loads
+        add_action('init', array($this, 'register_shortcodes'), 5);
 
         // Enqueue scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
@@ -31,6 +31,16 @@ class RFM_User_Dashboard {
         add_action('wp_ajax_rfm_update_user_profile', array($this, 'handle_profile_update'));
         add_action('wp_ajax_rfm_upload_user_avatar', array($this, 'handle_avatar_upload'));
         add_action('wp_ajax_rfm_delete_user_account', array($this, 'handle_account_deletion'));
+
+        rfm_log('RFM_User_Dashboard: Class constructed and hooks registered');
+    }
+
+    /**
+     * Register shortcodes
+     */
+    public function register_shortcodes() {
+        add_shortcode('rfm_user_dashboard', array($this, 'dashboard_shortcode'));
+        rfm_log('RFM_User_Dashboard: Shortcode [rfm_user_dashboard] registered');
     }
 
     /**
@@ -79,19 +89,26 @@ class RFM_User_Dashboard {
      * User dashboard shortcode
      */
     public function dashboard_shortcode($atts) {
+        rfm_log('RFM_User_Dashboard: dashboard_shortcode called');
+
         if (!is_user_logged_in()) {
-            return '<div class="rfm-message rfm-message-warning">' . 
-                   __('Du skal være logget ind for at se denne side.', 'rigtig-for-mig') . 
+            rfm_log('RFM_User_Dashboard: User not logged in');
+            return '<div class="rfm-message rfm-message-warning">' .
+                   __('Du skal være logget ind for at se denne side.', 'rigtig-for-mig') .
                    ' <a href="' . home_url('/login') . '">' . __('Log ind her', 'rigtig-for-mig') . '</a></div>';
         }
-        
+
         $user = wp_get_current_user();
-        
+        rfm_log('RFM_User_Dashboard: User logged in - ID: ' . $user->ID . ', Roles: ' . implode(', ', $user->roles));
+
         // Check if user has correct role
         if (!in_array('rfm_user', $user->roles)) {
-            return '<div class="rfm-message rfm-message-error">' . 
+            rfm_log('RFM_User_Dashboard: User does not have rfm_user role');
+            return '<div class="rfm-message rfm-message-error">' .
                    __('Du har ikke adgang til denne side.', 'rigtig-for-mig') . '</div>';
         }
+
+        rfm_log('RFM_User_Dashboard: Rendering dashboard for user ' . $user->ID);
         
         // Get user profile data
         global $wpdb;
