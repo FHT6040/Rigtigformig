@@ -103,7 +103,10 @@ class RFM_User_Admin {
      */
     public function render_users_page() {
         global $wpdb;
-        
+
+        // Define table name
+        $profiles_table = $wpdb->prefix . 'rfm_user_profiles';
+
         // Get all users with rfm_user role
         $users = get_users(array(
             'role' => 'rfm_user',
