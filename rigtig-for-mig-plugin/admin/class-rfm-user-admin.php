@@ -114,20 +114,38 @@ class RFM_User_Admin {
             'orderby' => 'registered',
             'order' => 'DESC'
         ));
-        
+
+        // IMPORTANT: Auto-sync verification status BEFORE calculating stats
+        foreach ($users as $user) {
+            $verified = RFM_Email_Verification::is_user_verified($user->ID);
+            if (!$verified) {
+                // Check WordPress native email verification
+                $wp_email_verified = get_user_meta($user->ID, 'email_verified', true);
+                if ($wp_email_verified === '1' || $wp_email_verified === 1 || $wp_email_verified === true) {
+                    update_user_meta($user->ID, 'rfm_email_verified', '1');
+                    rfm_log("RFM: Auto-synced verification from WordPress for user ID {$user->ID}");
+                }
+                // Fallback: Users created more than 24h ago (likely admin-created)
+                elseif (strtotime($user->user_registered) < strtotime('-24 hours')) {
+                    update_user_meta($user->ID, 'rfm_email_verified', '1');
+                    rfm_log("RFM: Auto-verified legacy user ID {$user->ID} (created {$user->user_registered})");
+                }
+            }
+        }
+
         $total_users = count($users);
-        
+
         // Get online users count
         $online_status = RFM_Online_Status::get_instance();
         $online_users = 0;
-        
+
         foreach ($users as $user) {
             if ($online_status->is_user_online($user->ID)) {
                 $online_users++;
             }
         }
-        
-        // Get statistics using helper methods
+
+        // Get statistics using helper methods (calculated AFTER auto-sync)
         $verified_users = RFM_Email_Verification::get_verified_users_count();
         $pending_users = $total_users - $verified_users;
         
@@ -197,25 +215,6 @@ class RFM_User_Admin {
 
                             $is_online = $online_status->is_user_online($user->ID);
                             $verified = RFM_Email_Verification::is_user_verified($user->ID);
-
-                            // Auto-sync: If not verified in RFM but verified in WordPress, sync it
-                            if (!$verified) {
-                                // Check WordPress native email verification
-                                $wp_email_verified = get_user_meta($user->ID, 'email_verified', true);
-                                if ($wp_email_verified === '1' || $wp_email_verified === 1 || $wp_email_verified === true) {
-                                    // Sync WordPress verification to RFM
-                                    update_user_meta($user->ID, 'rfm_email_verified', '1');
-                                    $verified = true;
-                                    rfm_log("RFM: Auto-synced verification from WordPress for user ID {$user->ID}");
-                                }
-                                // Fallback: Users created more than 24h ago (likely admin-created)
-                                elseif (strtotime($user->user_registered) < strtotime('-24 hours')) {
-                                    update_user_meta($user->ID, 'rfm_email_verified', '1');
-                                    $verified = true;
-                                    rfm_log("RFM: Auto-verified legacy user ID {$user->ID} (created {$user->user_registered})");
-                                }
-                            }
-
                             $last_login = $profile ? $profile->last_login : null;
                         ?>
                             <tr>
