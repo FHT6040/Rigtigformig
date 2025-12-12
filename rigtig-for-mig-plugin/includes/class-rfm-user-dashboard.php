@@ -45,15 +45,18 @@ class RFM_User_Dashboard {
 
     /**
      * Enqueue dashboard scripts and styles
+     *
+     * NOTE: We enqueue globally instead of checking for shortcode to ensure
+     * reliability with page builders, widgets, and various theme architectures.
+     * This matches the approach used by the working expert dashboard system.
      */
     public function enqueue_scripts() {
-        // Only load on pages with user dashboard shortcode
-        global $post;
-        if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'rfm_user_dashboard')) {
+        // Only load on frontend (not admin)
+        if (is_admin()) {
             return;
         }
 
-        // Enqueue user dashboard script
+        // Enqueue user dashboard script globally on all frontend pages
         wp_enqueue_script(
             'rfm-user-dashboard',
             RFM_PLUGIN_URL . 'assets/js/user-dashboard.js',
@@ -83,6 +86,8 @@ class RFM_User_Dashboard {
                 'confirmDelete' => __('Ja, slet min konto', 'rigtig-for-mig')
             )
         ));
+
+        rfm_log('RFM_User_Dashboard: Scripts enqueued globally on frontend');
     }
     
     /**
