@@ -189,14 +189,33 @@ class RFM_User_Admin {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($users as $user): 
+                        <?php foreach ($users as $user):
                             $profile = $wpdb->get_row($wpdb->prepare(
                                 "SELECT * FROM $profiles_table WHERE user_id = %d",
                                 $user->ID
                             ));
-                            
+
                             $is_online = $online_status->is_user_online($user->ID);
                             $verified = RFM_Email_Verification::is_user_verified($user->ID);
+
+                            // Auto-sync: If not verified in RFM but verified in WordPress, sync it
+                            if (!$verified) {
+                                // Check WordPress native email verification
+                                $wp_email_verified = get_user_meta($user->ID, 'email_verified', true);
+                                if ($wp_email_verified === '1' || $wp_email_verified === 1 || $wp_email_verified === true) {
+                                    // Sync WordPress verification to RFM
+                                    update_user_meta($user->ID, 'rfm_email_verified', '1');
+                                    $verified = true;
+                                    rfm_log("RFM: Auto-synced verification from WordPress for user ID {$user->ID}");
+                                }
+                                // Fallback: Users created more than 24h ago (likely admin-created)
+                                elseif (strtotime($user->user_registered) < strtotime('-24 hours')) {
+                                    update_user_meta($user->ID, 'rfm_email_verified', '1');
+                                    $verified = true;
+                                    rfm_log("RFM: Auto-verified legacy user ID {$user->ID} (created {$user->user_registered})");
+                                }
+                            }
+
                             $last_login = $profile ? $profile->last_login : null;
                         ?>
                             <tr>
