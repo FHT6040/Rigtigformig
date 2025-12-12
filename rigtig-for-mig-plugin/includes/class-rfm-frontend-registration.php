@@ -1,8 +1,13 @@
 <?php
 /**
- * Frontend Expert Registration and Profile Management
+ * Frontend Expert Dashboard and Profile Management
+ *
+ * NOTE: This class is being refactored. Authentication and Registration
+ * have been moved to separate classes (v3.5.0). This file now only handles
+ * Dashboard and Profile Editor functionality until Phase 2 refactoring.
  *
  * @package Rigtig_For_Mig
+ * @deprecated Partially - Use RFM_Expert_Authentication and RFM_Expert_Registration for auth/reg
  */
 
 if (!defined('ABSPATH')) {
@@ -21,53 +26,28 @@ class RFM_Frontend_Registration {
     }
     
     private function __construct() {
+        // NOTE: Authentication and Registration moved to separate classes in v3.5.0
+        // Only Dashboard and Profile Editor functionality remains here (temporary until Phase 2)
+
         // Shortcodes for frontend forms
-        add_shortcode('rfm_expert_registration', array($this, 'registration_form_shortcode'));
         add_shortcode('rfm_expert_dashboard', array($this, 'dashboard_shortcode'));
-        add_shortcode('rfm_expert_login', array($this, 'login_form_shortcode'));
         add_shortcode('rfm_expert_profile_edit', array($this, 'profile_edit_shortcode'));
         add_shortcode('rfm_expert_dashboard_tabbed', array($this, 'tabbed_dashboard_shortcode'));
 
         // Enqueue scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
 
-        // AJAX handlers
-        add_action('wp_ajax_rfm_submit_expert_registration', array($this, 'handle_registration'));
-        add_action('wp_ajax_nopriv_rfm_submit_expert_registration', array($this, 'handle_registration'));
-
-        add_action('wp_ajax_rfm_expert_login', array($this, 'handle_login'));
-        add_action('wp_ajax_nopriv_rfm_expert_login', array($this, 'handle_login'));
-
+        // AJAX handlers for Dashboard and Profile Editor
         add_action('wp_ajax_rfm_update_expert_profile', array($this, 'handle_profile_update'));
-
         add_action('wp_ajax_rfm_update_dashboard_profile', array($this, 'handle_dashboard_profile_update'));
-
         add_action('wp_ajax_rfm_upload_education_image', array($this, 'handle_education_image_upload'));
 
-        add_action('wp_ajax_rfm_expert_logout', array($this, 'handle_logout'));
-
-        // Add expert role
+        // Add expert role (TODO: Move to Role Manager class in Phase 2)
         add_action('init', array($this, 'add_expert_role'));
 
-        // Custom login redirect
-        add_filter('login_redirect', array($this, 'expert_login_redirect'), 10, 3);
-
-        // Custom logout redirect
-        add_filter('logout_redirect', array($this, 'expert_logout_redirect'), 10, 3);
-
-        // Hide admin bar for experts - multiple hooks to ensure it works
-        add_action('after_setup_theme', array($this, 'hide_admin_bar_for_experts'));
-        add_filter('show_admin_bar', array($this, 'hide_admin_bar_filter'));
-        add_action('init', array($this, 'remove_admin_bar_for_experts'), 9);
-
-        // Add body class for experts
-        add_filter('body_class', array($this, 'add_expert_body_class'));
-
-        // Block admin access for experts
-        add_action('admin_init', array($this, 'block_admin_access_for_experts'));
-
-        // Redirect experts away from wp-login.php
-        add_action('login_init', array($this, 'redirect_experts_from_wp_login'));
+        // Admin access restrictions (TODO: Move to Role Manager class in Phase 2)
+        add_action('admin_init', array($this, 'restrict_expert_admin_access'));
+        add_filter('user_has_cap', array($this, 'expert_edit_own_profile'), 10, 4);
     }
 
     /**
