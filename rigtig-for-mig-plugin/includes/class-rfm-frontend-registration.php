@@ -1,13 +1,16 @@
 <?php
 /**
- * Frontend Expert Dashboard and Profile Management
+ * Frontend Expert Profile Management
  *
- * NOTE: This class is being refactored. Authentication and Registration
- * have been moved to separate classes (v3.5.0). This file now only handles
- * Dashboard and Profile Editor functionality until Phase 2 refactoring.
+ * NOTE: This class is being refactored in phases:
+ * - Phase 1 (v3.5.0): Authentication and Registration moved to separate classes
+ * - Phase 2.1 (v3.6.0): Dashboard moved to RFM_Expert_Dashboard
+ * - Phase 2.2 (planned): Profile Editor will be moved to RFM_Expert_Profile_Editor
+ *
+ * This file now only handles Profile Editor functionality until Phase 2.2 refactoring.
  *
  * @package Rigtig_For_Mig
- * @deprecated Partially - Use RFM_Expert_Authentication and RFM_Expert_Registration for auth/reg
+ * @deprecated Partially - Use dedicated classes for auth/reg/dashboard
  */
 
 if (!defined('ABSPATH')) {
@@ -26,26 +29,26 @@ class RFM_Frontend_Registration {
     }
     
     private function __construct() {
-        // NOTE: Authentication and Registration moved to separate classes in v3.5.0
-        // Only Dashboard and Profile Editor functionality remains here (temporary until Phase 2)
+        // NOTE: Refactoring history:
+        // - v3.5.0: Authentication and Registration moved to separate classes
+        // - v3.6.0 (Phase 2.1): Dashboard moved to RFM_Expert_Dashboard
+        // Only Profile Editor functionality remains here (temporary until Phase 2.2)
 
         // Shortcodes for frontend forms
-        add_shortcode('rfm_expert_dashboard', array($this, 'dashboard_shortcode'));
+        // NOTE: Dashboard shortcodes now handled by RFM_Expert_Dashboard (v3.6.0)
         add_shortcode('rfm_expert_profile_edit', array($this, 'profile_edit_shortcode'));
-        add_shortcode('rfm_expert_dashboard_tabbed', array($this, 'tabbed_dashboard_shortcode'));
 
         // Enqueue scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
 
-        // AJAX handlers for Dashboard and Profile Editor
+        // AJAX handlers for Profile Editor
         add_action('wp_ajax_rfm_update_expert_profile', array($this, 'handle_profile_update'));
-        add_action('wp_ajax_rfm_update_dashboard_profile', array($this, 'handle_dashboard_profile_update'));
-        add_action('wp_ajax_rfm_upload_education_image', array($this, 'handle_education_image_upload'));
+        // NOTE: Dashboard AJAX handlers now in RFM_Expert_Dashboard (v3.6.0)
 
-        // Add expert role (TODO: Move to Role Manager class in Phase 2)
+        // Add expert role (TODO: Move to Role Manager class in Phase 2.3)
         add_action('init', array($this, 'add_expert_role'));
 
-        // Admin access restrictions (TODO: Move to Role Manager class in Phase 2)
+        // Admin access restrictions (TODO: Move to Role Manager class in Phase 2.3)
         add_action('admin_init', array($this, 'restrict_expert_admin_access'));
         add_filter('user_has_cap', array($this, 'expert_edit_own_profile'), 10, 4);
     }
@@ -1155,8 +1158,16 @@ class RFM_Frontend_Registration {
      * Dashboard shortcode
      * Now redirects to the tabbed dashboard for a unified experience
      */
+    /**
+     * Dashboard Shortcode
+     *
+     * @deprecated 3.6.0 Use RFM_Expert_Dashboard::dashboard_shortcode() instead
+     * @param array $atts Shortcode attributes
+     * @return string Dashboard HTML
+     */
     public function dashboard_shortcode($atts) {
-        // Use the new tabbed dashboard system
+        _deprecated_function(__METHOD__, '3.6.0', 'RFM_Expert_Dashboard::dashboard_shortcode()');
+        // Fallback to tabbed dashboard for backward compatibility
         return $this->tabbed_dashboard_shortcode($atts);
     }
     
@@ -1860,14 +1871,19 @@ class RFM_Frontend_Registration {
     
     /**
      * Tabbed Dashboard Shortcode
-     * 
+     *
      * Displays a tabbed interface where:
      * - "Generelt" tab contains name, contact, languages, and category selection
      * - One tab per selected category with category-specific profile data
-     * 
+     *
      * Usage: [rfm_expert_dashboard_tabbed]
+     *
+     * @deprecated 3.6.0 Use RFM_Expert_Dashboard::tabbed_dashboard_shortcode() instead
+     * @param array $atts Shortcode attributes
+     * @return string Dashboard HTML
      */
     public function tabbed_dashboard_shortcode($atts) {
+        _deprecated_function(__METHOD__, '3.6.0', 'RFM_Expert_Dashboard::tabbed_dashboard_shortcode()');
         if (!is_user_logged_in()) {
             return '<p>' . __('Du skal være logget ind for at se dit dashboard.', 'rigtig-for-mig') . ' <a href="' . wp_login_url(get_permalink()) . '">' . __('Log ind', 'rigtig-for-mig') . '</a></p>';
         }

@@ -3,7 +3,7 @@
  * Plugin Name: Rigtig for mig - Ekspert Markedsplads
  * Plugin URI: https://rigtigformig.dk
  * Description: En komplet markedsplads for terapeuter, coaches, mentorer og vejledere med profilsider, ratings, abonnementer og multi-language support.
- * Version: 3.5.0
+ * Version: 3.6.0
  * Author: Rigtig for mig
  * Author URI: https://rigtigformig.dk
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('RFM_VERSION', '3.5.0');
+define('RFM_VERSION', '3.6.0');
 define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -81,10 +81,11 @@ class Rigtig_For_Mig {
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-ratings.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-profile.php';
 
-        // Expert system - Refactored modular classes (v3.5.0)
+        // Expert system - Refactored modular classes (v3.5.0+)
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-authentication.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-registration.php';
-        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-frontend-registration.php'; // TODO: Split Dashboard/Profile Editor in Phase 2
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-dashboard.php'; // Phase 2.1 (v3.6.0)
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-frontend-registration.php'; // TODO: Remove after Profile Editor split (Phase 2.2)
 
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-flexible-fields.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-bulk-import.php';
@@ -219,10 +220,11 @@ class Rigtig_For_Mig {
         RFM_Expert_Profile::get_instance();
         RFM_Shortcodes::get_instance();
 
-        // Expert system - Refactored modular classes (v3.5.0)
+        // Expert system - Refactored modular classes (v3.5.0+)
         RFM_Expert_Authentication::get_instance();
         RFM_Expert_Registration::get_instance();
-        RFM_Frontend_Registration::get_instance(); // TODO: Remove after Dashboard/Profile Editor split (Phase 2)
+        RFM_Expert_Dashboard::get_instance(); // Phase 2.1 (v3.6.0)
+        RFM_Frontend_Registration::get_instance(); // TODO: Remove after Profile Editor split (Phase 2.2)
 
         RFM_Flexible_Fields_System::get_instance();
         RFM_Password_Reset::get_instance();
