@@ -29,6 +29,7 @@ class RFM_User_Admin {
         add_action('wp_ajax_rfm_delete_user_admin', array($this, 'handle_admin_delete_user'));
         add_action('wp_ajax_rfm_toggle_user_status', array($this, 'handle_toggle_user_status'));
         add_action('wp_ajax_rfm_export_user_data', array($this, 'handle_export_user_data'));
+        add_action('wp_ajax_rfm_verify_user', array($this, 'handle_verify_user'));
     }
     
     /**
@@ -103,27 +104,52 @@ class RFM_User_Admin {
      */
     public function render_users_page() {
         global $wpdb;
-        
+
+        // Define table name
+        $profiles_table = $wpdb->prefix . 'rfm_user_profiles';
+
         // Get all users with rfm_user role
         $users = get_users(array(
             'role' => 'rfm_user',
             'orderby' => 'registered',
             'order' => 'DESC'
         ));
-        
+
+        // IMPORTANT: Auto-sync verification status BEFORE calculating stats
+        // Cache bust: v3.4.4-001
+        rfm_log("RFM ADMIN: Starting auto-sync check for " . count($users) . " users");
+        foreach ($users as $user) {
+            $verified = RFM_Email_Verification::is_user_verified($user->ID);
+            rfm_log("RFM ADMIN: User {$user->ID} verification status: " . ($verified ? 'YES' : 'NO'));
+            if (!$verified) {
+                // Check WordPress native email verification
+                $wp_email_verified = get_user_meta($user->ID, 'email_verified', true);
+                if ($wp_email_verified === '1' || $wp_email_verified === 1 || $wp_email_verified === true) {
+                    update_user_meta($user->ID, 'rfm_email_verified', '1');
+                    rfm_log("RFM: Auto-synced verification from WordPress for user ID {$user->ID}");
+                }
+                // Fallback: Users created more than 24h ago (likely admin-created)
+                elseif (strtotime($user->user_registered) < strtotime('-24 hours')) {
+                    update_user_meta($user->ID, 'rfm_email_verified', '1');
+                    rfm_log("RFM: Auto-verified legacy user ID {$user->ID} (created {$user->user_registered})");
+                }
+            }
+        }
+        rfm_log("RFM ADMIN: Auto-sync check completed");
+
         $total_users = count($users);
-        
+
         // Get online users count
         $online_status = RFM_Online_Status::get_instance();
         $online_users = 0;
-        
+
         foreach ($users as $user) {
             if ($online_status->is_user_online($user->ID)) {
                 $online_users++;
             }
         }
-        
-        // Get statistics using helper methods
+
+        // Get statistics using helper methods (calculated AFTER auto-sync)
         $verified_users = RFM_Email_Verification::get_verified_users_count();
         $pending_users = $total_users - $verified_users;
         
@@ -185,12 +211,12 @@ class RFM_User_Admin {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($users as $user): 
+                        <?php foreach ($users as $user):
                             $profile = $wpdb->get_row($wpdb->prepare(
                                 "SELECT * FROM $profiles_table WHERE user_id = %d",
                                 $user->ID
                             ));
-                            
+
                             $is_online = $online_status->is_user_online($user->ID);
                             $verified = RFM_Email_Verification::is_user_verified($user->ID);
                             $last_login = $profile ? $profile->last_login : null;
@@ -218,6 +244,9 @@ class RFM_User_Admin {
                                         <span style="color: green;">✓ <?php _e('Ja', 'rigtig-for-mig'); ?></span>
                                     <?php else: ?>
                                         <span style="color: orange;">⏳ <?php _e('Afventende', 'rigtig-for-mig'); ?></span>
+                                        <button class="button button-small rfm-verify-user" data-user-id="<?php echo $user->ID; ?>" style="margin-left: 5px;">
+                                            <?php _e('Verificer', 'rigtig-for-mig'); ?>
+                                        </button>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -266,11 +295,11 @@ class RFM_User_Admin {
             $('.rfm-delete-user').on('click', function() {
                 const userId = $(this).data('user-id');
                 const username = $(this).data('username');
-                
+
                 if (!confirm('Er du sikker på at du vil slette brugeren "' + username + '"? Dette kan ikke fortrydes!')) {
                     return;
                 }
-                
+
                 $.ajax({
                     url: ajaxurl,
                     type: 'POST',
@@ -288,7 +317,37 @@ class RFM_User_Admin {
                     }
                 });
             });
-            
+
+            // Verify user
+            $('.rfm-verify-user').on('click', function() {
+                const userId = $(this).data('user-id');
+                const $button = $(this);
+
+                $button.prop('disabled', true).text('Verificerer...');
+
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'rfm_verify_user',
+                        user_id: userId,
+                        _wpnonce: '<?php echo wp_create_nonce('rfm_verify_user'); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            window.location.reload();
+                        } else {
+                            alert(response.data.message);
+                            $button.prop('disabled', false).text('Verificer');
+                        }
+                    },
+                    error: function() {
+                        alert('Der opstod en fejl');
+                        $button.prop('disabled', false).text('Verificer');
+                    }
+                });
+            });
+
             // Export users
             $('#rfm-export-users').on('click', function() {
                 window.location.href = ajaxurl + '?action=rfm_export_user_data&_wpnonce=' + '<?php echo wp_create_nonce('rfm_export_user_data'); ?>';
@@ -390,5 +449,29 @@ class RFM_User_Admin {
         
         fclose($output);
         exit;
+    }
+
+    /**
+     * Handle manual user verification
+     */
+    public function handle_verify_user() {
+        check_ajax_referer('rfm_verify_user');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Ingen tilladelse', 'rigtig-for-mig')));
+        }
+
+        $user_id = intval($_POST['user_id']);
+
+        if (!$user_id) {
+            wp_send_json_error(array('message' => __('Ugyldig bruger ID', 'rigtig-for-mig')));
+        }
+
+        // Verify the user by setting the meta
+        update_user_meta($user_id, 'rfm_email_verified', '1');
+
+        rfm_log("RFM: Admin manually verified user ID $user_id");
+
+        wp_send_json_success(array('message' => __('Bruger verificeret', 'rigtig-for-mig')));
     }
 }
