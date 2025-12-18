@@ -1,0 +1,8 @@
+# Ignore zip files in plugin directory (build artifacts)
+rigtig-for-mig-plugin/**/*.zip
+
+# But allow version zips in root
+!rigtig-for-mig-*.zip
+
+.DS_Store
+*.log

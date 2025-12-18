@@ -467,13 +467,13 @@ class RFM_Post_Types {
             'public'             => false,  // Not public - only admin access
             'publicly_queryable' => false,
             'show_ui'            => true,
-            'show_in_menu'       => true,
+            'show_in_menu'       => 'rfm-dashboard',  // Show under main RFM menu
             'query_var'          => true,
             'rewrite'            => false,
             'capability_type'    => 'post',
             'has_archive'        => false,
             'hierarchical'       => false,
-            'menu_position'      => 6,
+            'menu_position'      => null,
             'menu_icon'          => 'dashicons-groups',
             'supports'           => array('title', 'thumbnail'),
             'show_in_rest'       => true,
