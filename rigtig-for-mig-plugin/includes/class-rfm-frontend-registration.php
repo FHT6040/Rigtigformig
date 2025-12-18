@@ -30,20 +30,21 @@ class RFM_Frontend_Registration {
     
     private function __construct() {
         // NOTE: Refactoring history:
-        // - v3.5.0: Authentication and Registration moved to separate classes
+        // - v3.5.0 (Phase 1): Authentication and Registration moved to separate classes
         // - v3.6.0 (Phase 2.1): Dashboard moved to RFM_Expert_Dashboard
-        // Only Profile Editor functionality remains here (temporary until Phase 2.2)
+        // - v3.6.0 (Phase 2.2): Profile Editor moved to RFM_Expert_Profile_Editor
+        // Only Role Management functionality remains here (until Phase 2.3)
 
-        // Shortcodes for frontend forms
-        // NOTE: Dashboard shortcodes now handled by RFM_Expert_Dashboard (v3.6.0)
-        add_shortcode('rfm_expert_profile_edit', array($this, 'profile_edit_shortcode'));
+        // NOTE: All shortcodes now handled by dedicated classes (v3.6.0)
+        // - Authentication: RFM_Expert_Authentication
+        // - Registration: RFM_Expert_Registration
+        // - Dashboard: RFM_Expert_Dashboard
+        // - Profile Editor: RFM_Expert_Profile_Editor
 
         // Enqueue scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
 
-        // AJAX handlers for Profile Editor
-        add_action('wp_ajax_rfm_update_expert_profile', array($this, 'handle_profile_update'));
-        // NOTE: Dashboard AJAX handlers now in RFM_Expert_Dashboard (v3.6.0)
+        // NOTE: AJAX handlers now in dedicated classes (v3.6.0)
 
         // Add expert role (TODO: Move to Role Manager class in Phase 2.3)
         add_action('init', array($this, 'add_expert_role'));

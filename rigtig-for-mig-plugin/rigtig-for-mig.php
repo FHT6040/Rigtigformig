@@ -85,7 +85,8 @@ class Rigtig_For_Mig {
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-authentication.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-registration.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-dashboard.php'; // Phase 2.1 (v3.6.0)
-        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-frontend-registration.php'; // TODO: Remove after Profile Editor split (Phase 2.2)
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-profile-editor.php'; // Phase 2.2 (v3.6.0)
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-frontend-registration.php'; // TODO: Remove after Role Manager (Phase 2.3)
 
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-flexible-fields.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-bulk-import.php';
@@ -224,7 +225,8 @@ class Rigtig_For_Mig {
         RFM_Expert_Authentication::get_instance();
         RFM_Expert_Registration::get_instance();
         RFM_Expert_Dashboard::get_instance(); // Phase 2.1 (v3.6.0)
-        RFM_Frontend_Registration::get_instance(); // TODO: Remove after Profile Editor split (Phase 2.2)
+        RFM_Expert_Profile_Editor::get_instance(); // Phase 2.2 (v3.6.0)
+        RFM_Frontend_Registration::get_instance(); // TODO: Remove after Role Manager (Phase 2.3)
 
         RFM_Flexible_Fields_System::get_instance();
         RFM_Password_Reset::get_instance();
