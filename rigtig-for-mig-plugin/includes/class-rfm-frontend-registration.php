@@ -1,16 +1,20 @@
 <?php
 /**
- * Frontend Expert Profile Management
+ * Frontend Expert Management (DEPRECATED)
  *
- * NOTE: This class is being refactored in phases:
- * - Phase 1 (v3.5.0): Authentication and Registration moved to separate classes
- * - Phase 2.1 (v3.6.0): Dashboard moved to RFM_Expert_Dashboard
- * - Phase 2.2 (planned): Profile Editor will be moved to RFM_Expert_Profile_Editor
+ * THIS CLASS IS FULLY DEPRECATED AS OF v3.6.0
  *
- * This file now only handles Profile Editor functionality until Phase 2.2 refactoring.
+ * All functionality has been moved to dedicated classes:
+ * - Phase 1 (v3.5.0): Authentication → RFM_Expert_Authentication
+ * - Phase 1 (v3.5.0): Registration → RFM_Expert_Registration
+ * - Phase 2.1 (v3.6.0): Dashboard → RFM_Expert_Dashboard
+ * - Phase 2.2 (v3.6.0): Profile Editor → RFM_Expert_Profile_Editor
+ * - Phase 2.3 (v3.6.0): Role Manager → RFM_Expert_Role_Manager
+ *
+ * This file is kept only for backward compatibility and will be removed in a future version.
  *
  * @package Rigtig_For_Mig
- * @deprecated Partially - Use dedicated classes for auth/reg/dashboard
+ * @deprecated 3.6.0 Use dedicated modular classes instead
  */
 
 if (!defined('ABSPATH')) {
@@ -33,25 +37,22 @@ class RFM_Frontend_Registration {
         // - v3.5.0 (Phase 1): Authentication and Registration moved to separate classes
         // - v3.6.0 (Phase 2.1): Dashboard moved to RFM_Expert_Dashboard
         // - v3.6.0 (Phase 2.2): Profile Editor moved to RFM_Expert_Profile_Editor
-        // Only Role Management functionality remains here (until Phase 2.3)
+        // - v3.6.0 (Phase 2.3): Role Management moved to RFM_Expert_Role_Manager
+        //
+        // THIS CLASS IS NOW FULLY DEPRECATED - All functionality has been moved to dedicated classes.
+        // Kept only for backward compatibility. Will be removed in future version.
 
-        // NOTE: All shortcodes now handled by dedicated classes (v3.6.0)
+        // NOTE: All functionality now handled by dedicated classes (v3.6.0):
         // - Authentication: RFM_Expert_Authentication
         // - Registration: RFM_Expert_Registration
         // - Dashboard: RFM_Expert_Dashboard
         // - Profile Editor: RFM_Expert_Profile_Editor
+        // - Role Manager: RFM_Expert_Role_Manager
 
-        // Enqueue scripts
+        // Enqueue scripts (kept for backward compatibility)
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
 
-        // NOTE: AJAX handlers now in dedicated classes (v3.6.0)
-
-        // Add expert role (TODO: Move to Role Manager class in Phase 2.3)
-        add_action('init', array($this, 'add_expert_role'));
-
-        // Admin access restrictions (TODO: Move to Role Manager class in Phase 2.3)
-        add_action('admin_init', array($this, 'restrict_expert_admin_access'));
-        add_filter('user_has_cap', array($this, 'expert_edit_own_profile'), 10, 4);
+        // NOTE: All hooks now registered by dedicated classes (v3.6.0)
     }
 
     /**

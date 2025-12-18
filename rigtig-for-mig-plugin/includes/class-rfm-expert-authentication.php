@@ -37,16 +37,8 @@ class RFM_Expert_Authentication {
         add_filter('logout_redirect', array($this, 'expert_logout_redirect'), 10, 3);
         add_action('login_init', array($this, 'redirect_experts_from_wp_login'));
 
-        // Hide admin bar for experts
-        add_action('after_setup_theme', array($this, 'hide_admin_bar_for_experts'));
-        add_filter('show_admin_bar', array($this, 'hide_admin_bar_filter'));
-        add_action('init', array($this, 'remove_admin_bar_for_experts'), 9);
-
-        // Add body class for experts
-        add_filter('body_class', array($this, 'add_expert_body_class'));
-
-        // Block admin access for experts
-        add_action('admin_init', array($this, 'block_admin_access_for_experts'));
+        // NOTE: Admin bar hiding, body classes, and admin access control
+        // have been moved to RFM_Expert_Role_Manager (Phase 2.3, v3.6.0)
 
         // Enqueue authentication scripts
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
@@ -233,74 +225,13 @@ class RFM_Expert_Authentication {
         }
     }
 
-    /**
-     * Hide admin bar for expert users
-     */
-    public function hide_admin_bar_for_experts() {
-        if (is_user_logged_in()) {
-            $user = wp_get_current_user();
-            if (in_array('rfm_expert_user', (array) $user->roles)) {
-                show_admin_bar(false);
-            }
-        }
-    }
-
-    /**
-     * Filter to hide admin bar for expert users
-     */
-    public function hide_admin_bar_filter($show_admin_bar) {
-        if (is_user_logged_in()) {
-            $user = wp_get_current_user();
-            if (in_array('rfm_expert_user', (array) $user->roles)) {
-                return false;
-            }
-        }
-        return $show_admin_bar;
-    }
-
-    /**
-     * Remove admin bar completely for expert users
-     */
-    public function remove_admin_bar_for_experts() {
-        if (is_user_logged_in()) {
-            $user = wp_get_current_user();
-            if (in_array('rfm_expert_user', (array) $user->roles)) {
-                add_filter('show_admin_bar', '__return_false');
-                remove_action('wp_head', '_admin_bar_bump_cb');
-            }
-        }
-    }
-
-    /**
-     * Add body class for expert users
-     */
-    public function add_expert_body_class($classes) {
-        if (is_user_logged_in()) {
-            $user = wp_get_current_user();
-            if (in_array('rfm_expert_user', (array) $user->roles)) {
-                $classes[] = 'rfm-expert-user';
-            }
-        }
-        return $classes;
-    }
-
-    /**
-     * Block admin access for expert users
-     */
-    public function block_admin_access_for_experts() {
-        // Allow AJAX requests
-        if (defined('DOING_AJAX') && DOING_AJAX) {
-            return;
-        }
-
-        if (is_user_logged_in()) {
-            $user = wp_get_current_user();
-
-            // Experts (non-admins) should not access admin area
-            if (in_array('rfm_expert_user', (array) $user->roles) && !in_array('administrator', (array) $user->roles)) {
-                wp_redirect(home_url('/ekspert-dashboard/'));
-                exit;
-            }
-        }
-    }
+    // ========================================================================
+    // NOTE: The following methods have been moved to RFM_Expert_Role_Manager
+    // as of Phase 2.3 (v3.6.0):
+    // - hide_admin_bar_for_experts()
+    // - hide_admin_bar_filter()
+    // - remove_admin_bar_for_experts()
+    // - add_expert_body_class()
+    // - block_admin_access_for_experts()
+    // ========================================================================
 }
