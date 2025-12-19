@@ -417,7 +417,9 @@ class RFM_User_Registration {
         
         wp_send_json_success(array(
             'message' => __('Din profil er oprettet! Tjek din e-mail for at bekræfte din konto.', 'rigtig-for-mig'),
-            'redirect' => home_url('/bekraeft-email')
+            // FIX (v3.6.1): Changed redirect to login page to avoid confusion
+            // User should go to login page and check email, not a confirmation page
+            'redirect' => home_url('/login')
         ));
     }
     

@@ -229,18 +229,30 @@ class RFM_Migration {
 
     /**
      * Set user verified status
+     * IMPORTANT: Updates BOTH post_meta (user profile CPT) AND user_meta (WordPress user)
+     * to ensure sync between admin panel and frontend
      */
     public static function set_user_verified($wp_user_id, $verified = true) {
         $profile = self::get_user_profile_by_wp_user_id($wp_user_id);
         if ($profile) {
             $value = $verified ? '1' : '0';
+
+            // Update post_meta on user profile CPT
             update_post_meta($profile->ID, '_rfm_email_verified', $value);
 
             if ($verified) {
                 update_post_meta($profile->ID, '_rfm_email_verified_at', current_time('mysql'));
             }
 
-            error_log("RFM: Set user $wp_user_id verification to: $value");
+            // CRITICAL FIX (v3.6.1): Also update user_meta so admin panel can see verification status
+            // This ensures RFM_Email_Verification::is_user_verified() returns correct value
+            update_user_meta($wp_user_id, 'rfm_email_verified', $value);
+
+            if ($verified) {
+                update_user_meta($wp_user_id, 'rfm_email_verified_at', current_time('mysql'));
+            }
+
+            error_log("RFM: Set user $wp_user_id verification to: $value (both post_meta and user_meta)");
             return true;
         }
 
