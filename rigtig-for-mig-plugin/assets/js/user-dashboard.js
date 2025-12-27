@@ -1,11 +1,15 @@
 /**
- * Rigtig for mig - User Dashboard JavaScript
+ * User Dashboard JavaScript
+ *
+ * Handles all user dashboard interactions including profile management,
+ * avatar upload, password changes, GDPR data download, and account deletion.
+ *
+ * Follows the same pattern as Expert Dashboard:
+ * - Uses global rfmData for ajaxurl
+ * - Uses specific rfmUserDashboard for nonce, homeUrl, and strings
  *
  * @package Rigtig_For_Mig
- * @since 3.4.1
- *
- * FIX v3.6.2: Changed to use global rfmData object (from rfm-public script)
- * instead of rfmUserDashboard to match Expert Dashboard pattern and fix caching issues
+ * @since 3.6.4
  */
 
 (function($) {
@@ -13,7 +17,9 @@
 
     $(document).ready(function() {
 
-        // Profile form handler
+        // ========================================
+        // PROFILE FORM SUBMISSION
+        // ========================================
         $('#rfm-user-profile-form').on('submit', function(e) {
             e.preventDefault();
 
@@ -24,53 +30,69 @@
 
             var formData = {
                 action: 'rfm_update_user_profile',
-                nonce: rfmData.nonce,  // Changed from rfmUserDashboard
+                nonce: rfmUserDashboard.nonce,
                 display_name: $('#user_display_name').val(),
                 phone: $('#user_phone').val(),
                 bio: $('#user_bio').val()
             };
 
-            $button.prop('disabled', true).text('Gemmer...');  // Hardcoded instead of rfmUserDashboard.strings
+            $button.prop('disabled', true).text(rfmUserDashboard.strings.saving);
+            $messages.html('');
 
             $.ajax({
-                url: rfmData.ajaxurl,  // Changed from rfmUserDashboard
+                url: rfmData.ajaxurl,
                 type: 'POST',
                 data: formData,
                 success: function(response) {
                     if (response.success) {
                         $messages.html('<div class="rfm-message rfm-message-success">' + response.data.message + '</div>');
                     } else {
-                        $messages.html('<div class="rfm-message rfm-message-error">' + (response.data.message || 'Der opstod en fejl') + '</div>');
+                        $messages.html('<div class="rfm-message rfm-message-error">' + (response.data.message || rfmUserDashboard.strings.error) + '</div>');
                     }
                     $button.prop('disabled', false).text(originalText);
                 },
                 error: function(xhr, status, error) {
-                    $messages.html('<div class="rfm-message rfm-message-error">Der opstod en fejl: ' + error + '</div>');
+                    $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
                     $button.prop('disabled', false).text(originalText);
                 }
             });
         });
 
-        // Avatar upload
+        // ========================================
+        // AVATAR UPLOAD
+        // ========================================
         $('#user_avatar_upload').on('change', function(e) {
             var file = e.target.files[0];
             if (!file) return;
 
-            // Preview
+            // Client-side validation
+            var maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+                $('.rfm-form-messages').html('<div class="rfm-message rfm-message-error">Billedet må maksimalt være 2 MB</div>');
+                return;
+            }
+
+            var allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                $('.rfm-form-messages').html('<div class="rfm-message rfm-message-error">Kun JPG, PNG og GIF er tilladt</div>');
+                return;
+            }
+
+            // Preview image
             var reader = new FileReader();
             reader.onload = function(e) {
                 $('#user-avatar-preview').attr('src', e.target.result);
             };
             reader.readAsDataURL(file);
 
-            // Upload
+            // Upload to server
             var formData = new FormData();
             formData.append('action', 'rfm_upload_user_avatar');
-            formData.append('nonce', rfmData.nonce);  // Changed from rfmUserDashboard
+            formData.append('nonce', rfmUserDashboard.nonce);
             formData.append('avatar', file);
 
             $.ajax({
-                url: rfmData.ajaxurl,  // Changed from rfmUserDashboard
+                url: rfmData.ajaxurl,
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -83,12 +105,14 @@
                     }
                 },
                 error: function(xhr, status, error) {
-                    $('.rfm-form-messages').html('<div class="rfm-message rfm-message-error">Der opstod en fejl</div>');
+                    $('.rfm-form-messages').html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
                 }
             });
         });
 
-        // Password change form handler
+        // ========================================
+        // PASSWORD CHANGE FORM
+        // ========================================
         $('#rfm-password-change-form').on('submit', function(e) {
             e.preventDefault();
 
@@ -103,28 +127,29 @@
 
             // Client-side validation
             if (!current_password || !new_password || !confirm_password) {
-                $messages.html('<div class="rfm-message rfm-message-error">Udfyld alle felter</div>');
+                $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.fillAllFields + '</div>');
                 return;
             }
 
             if (new_password !== confirm_password) {
-                $messages.html('<div class="rfm-message rfm-message-error">De nye adgangskoder matcher ikke</div>');
+                $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.passwordMismatch + '</div>');
                 return;
             }
 
             if (new_password.length < 8) {
-                $messages.html('<div class="rfm-message rfm-message-error">Ny adgangskode skal være mindst 8 tegn</div>');
+                $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.passwordTooShort + '</div>');
                 return;
             }
 
-            $button.prop('disabled', true).text('Skifter adgangskode...');
+            $button.prop('disabled', true).text(rfmUserDashboard.strings.changingPassword);
+            $messages.html('');
 
             $.ajax({
-                url: rfmData.ajaxurl,  // Changed from rfmUserDashboard
+                url: rfmData.ajaxurl,
                 type: 'POST',
                 data: {
                     action: 'rfm_update_user_profile',
-                    nonce: rfmData.nonce,  // Changed from rfmUserDashboard
+                    nonce: rfmUserDashboard.nonce,
                     current_password: current_password,
                     new_password: new_password
                 },
@@ -138,25 +163,27 @@
                     $button.prop('disabled', false).text(originalText);
                 },
                 error: function(xhr, status, error) {
-                    $messages.html('<div class="rfm-message rfm-message-error">Der opstod en fejl</div>');
+                    $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
                     $button.prop('disabled', false).text(originalText);
                 }
             });
         });
 
-        // Logout button
+        // ========================================
+        // LOGOUT BUTTON
+        // ========================================
         $('#rfm-logout-btn').on('click', function(e) {
             e.preventDefault();
 
             var $button = $(this);
-            $button.prop('disabled', true).text('Logger ud...');
+            $button.prop('disabled', true).text(rfmUserDashboard.strings.loggingOut);
 
             $.ajax({
-                url: rfmData.ajaxurl,  // Changed from rfmUserDashboard
+                url: rfmData.ajaxurl,
                 type: 'POST',
                 data: {
                     action: 'rfm_logout',
-                    nonce: rfmData.nonce  // Changed from rfmUserDashboard
+                    nonce: rfmUserDashboard.nonce
                 },
                 cache: false,
                 success: function(response) {
@@ -169,35 +196,37 @@
                         });
                     }
 
-                    // Force hard reload without cache
-                    if (response.data && response.data.clear_cache) {
-                        window.location.replace(response.data.redirect || rfmData.homeUrl);  // Changed from rfmUserDashboard
-                    } else {
-                        window.location.href = response.data.redirect || rfmData.homeUrl;  // Changed from rfmUserDashboard
-                    }
+                    // Redirect to home or login page
+                    var redirectUrl = response.data && response.data.redirect
+                        ? response.data.redirect
+                        : rfmUserDashboard.homeUrl;
+
+                    window.location.replace(redirectUrl);
                 },
                 error: function(xhr, status, error) {
-                    // Force redirect anyway
-                    window.location.replace(rfmData.homeUrl);  // Changed from rfmUserDashboard
+                    // Force redirect to home on error
+                    window.location.replace(rfmUserDashboard.homeUrl);
                 }
             });
         });
 
-        // Download user data (GDPR)
+        // ========================================
+        // DOWNLOAD USER DATA (GDPR)
+        // ========================================
         $('#rfm-download-data').on('click', function(e) {
             e.preventDefault();
 
             var $button = $(this);
             var originalText = $button.text();
 
-            $button.prop('disabled', true).text('Downloader...');
+            $button.prop('disabled', true).text(rfmUserDashboard.strings.downloading);
 
             $.ajax({
-                url: rfmData.ajaxurl,  // Changed from rfmUserDashboard
+                url: rfmData.ajaxurl,
                 type: 'POST',
                 data: {
                     action: 'rfm_update_user_profile',
-                    nonce: rfmData.nonce,  // Changed from rfmUserDashboard
+                    nonce: rfmUserDashboard.nonce,
                     download_data: true
                 },
                 success: function(response) {
@@ -211,7 +240,7 @@
                         downloadAnchorNode.click();
                         downloadAnchorNode.remove();
 
-                        $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-success">Data downloadet</div>');
+                        $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-success">' + rfmUserDashboard.strings.dataDownloaded + '</div>');
                         setTimeout(function() {
                             $('.rfm-message-success').fadeOut();
                         }, 3000);
@@ -221,13 +250,15 @@
                     $button.prop('disabled', false).text(originalText);
                 },
                 error: function(xhr, status, error) {
-                    $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-error">Der opstod en fejl</div>');
+                    $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
                     $button.prop('disabled', false).text(originalText);
                 }
             });
         });
 
-        // Delete account modal handlers
+        // ========================================
+        // DELETE ACCOUNT MODAL
+        // ========================================
         $('#rfm-delete-account').on('click', function() {
             $('#rfm-delete-modal').fadeIn();
         });
@@ -242,32 +273,37 @@
             var password = $('#delete_confirm_password').val();
 
             if (!password) {
-                $('.rfm-modal-messages').html('<div class="rfm-message rfm-message-error">Indtast din adgangskode</div>');
+                $('.rfm-modal-messages').html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.enterPassword + '</div>');
                 return;
             }
 
-            if (!confirm('Er du sikker? Dette kan ikke fortrydes!')) {
+            if (!confirm(rfmUserDashboard.strings.finalWarning)) {
                 return;
             }
 
-            $(this).prop('disabled', true).text('Sletter...');
+            var $button = $(this);
+            $button.prop('disabled', true).text(rfmUserDashboard.strings.deleting);
 
             $.ajax({
-                url: rfmData.ajaxurl,  // Changed from rfmUserDashboard
+                url: rfmData.ajaxurl,
                 type: 'POST',
                 data: {
                     action: 'rfm_delete_user_account',
-                    nonce: rfmData.nonce,  // Changed from rfmUserDashboard
+                    nonce: rfmUserDashboard.nonce,
                     password: password
                 },
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
-                        window.location.href = rfmData.homeUrl;  // Changed from rfmUserDashboard
+                        window.location.href = rfmUserDashboard.homeUrl;
                     } else {
                         $('.rfm-modal-messages').html('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
-                        $('#rfm-confirm-delete').prop('disabled', false).text('Bekræft sletning');
+                        $button.prop('disabled', false).text(rfmUserDashboard.strings.confirmDelete);
                     }
+                },
+                error: function(xhr, status, error) {
+                    $('.rfm-modal-messages').html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
+                    $button.prop('disabled', false).text(rfmUserDashboard.strings.confirmDelete);
                 }
             });
         });
