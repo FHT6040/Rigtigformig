@@ -57,10 +57,11 @@ class RFM_User_Dashboard {
         }
 
         // Enqueue user dashboard script globally on all frontend pages
+        // CRITICAL: Depends on 'rfm-public' to ensure rfmData is available
         wp_enqueue_script(
             'rfm-user-dashboard',
             RFM_PLUGIN_URL . 'assets/js/user-dashboard.js',
-            array('jquery'),
+            array('jquery', 'rfm-public'),
             RFM_VERSION,
             true
         );
