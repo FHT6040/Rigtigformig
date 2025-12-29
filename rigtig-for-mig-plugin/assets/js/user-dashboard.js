@@ -4,12 +4,14 @@
  * Handles all user dashboard interactions including profile management,
  * avatar upload, password changes, GDPR data download, and account deletion.
  *
- * Follows the same pattern as Expert Dashboard:
+ * Rebuilt in v3.6.5 to follow Expert Dashboard pattern:
  * - Uses global rfmData for ajaxurl
  * - Uses specific rfmUserDashboard for nonce, homeUrl, and strings
+ * - Clean AJAX handlers with proper error handling
+ * - Follows WordPress best practices
  *
  * @package Rigtig_For_Mig
- * @since 3.6.4
+ * @since 3.6.5
  */
 
 (function($) {
