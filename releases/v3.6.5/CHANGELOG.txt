@@ -1,0 +1,82 @@
+RIGTIG FOR MIG - CHANGELOG
+==========================
+
+Version 3.6.5 (2025-12-29)
+--------------------------
+MAJOR RELEASE - Komplet Rebuild af Bruger Dashboard
+
+BREAKING CHANGES:
+* Bruger Dashboard bruger nu WordPress user_meta i stedet for custom table
+* Gamle data i wp_rfm_user_profiles forbliver i database men bruges ikke
+* Nye redigeringer gemmes i user_meta
+
+NYE FUNKTIONER:
+* Komplet genopbygget Bruger Dashboard klasse
+* Clean AJAX handler arkitektur
+* WordPress native data storage
+* Bedre error handling
+* Forbedret logging
+
+FORBEDRINGER:
+* Reduceret kode fra 743 til 623 linjer (-16%)
+* Fjernet 300+ linjer unødvendig kode
+* Simpel og pålidelig kode struktur
+* Følger WordPress Coding Standards
+* Matcher Expert Dashboard arkitektur
+
+RETTELSER:
+* AJAX handlers virker nu korrekt (før: 302 redirect, nu: 200 success)
+* Profil opdatering virker
+* Avatar upload virker
+* Password ændring virker
+* GDPR download virker
+* Logout virker korrekt
+* Konto sletning virker
+
+TEKNISKE ÆNDRINGER:
+* class-rfm-user-dashboard.php - Komplet rebuild
+  - Bruger update_user_meta() i stedet for $wpdb->update()
+  - Bruger get_user_meta() i stedet for $wpdb->get_row()
+  - Clean AJAX handlers med proper nonce verification
+  - Fjernet ensure_user_profile_exists() (ikke længere nødvendig)
+
+* assets/js/user-dashboard.js - Komplet rebuild
+  - Korrekt dual-object pattern (rfmData + rfmUserDashboard)
+  - Bedre error handling
+  - Konsistent med Expert Dashboard JavaScript
+  - Forbedret kode organisation
+
+* rigtig-for-mig.php
+  - Version opdateret til 3.6.5
+  - RFM_VERSION constant opdateret
+
+FILER ÆNDRET:
+* includes/class-rfm-user-dashboard.php (163 insertions, 281 deletions)
+* assets/js/user-dashboard.js (komplet rebuild)
+* rigtig-for-mig.php (version bump)
+
+BAGGRUND:
+Efter omfattende debugging af v3.6.2-3.6.4 viste det sig at Bruger Dashboard
+havde fundamentale arkitektur problemer. Bruger bad eksplicit om rebuild:
+"Rebuild - helt klart. Slet alt det gamle bruger-profil og kopier expert logikken"
+
+Denne version repræsenterer en komplet genopbygning baseret på den velfungerende
+Expert Dashboard arkitektur.
+
+---
+
+Version 3.6.4 (2025-12-28)
+--------------------------
+* Fix: User Dashboard localization pattern
+* Korrekt brug af rfmData vs rfmUserDashboard objekter
+* Forbedret JavaScript struktur
+
+Version 3.6.3 (2025-12-27)
+--------------------------
+* Fix: Script dependency problem
+* Tilføjet 'rfm-public' dependency til user-dashboard.js
+* Forsøgt at løse LiteSpeed Cache problemer
+
+Version 3.6.2 og tidligere
+--------------------------
+Se GitHub commit history for detaljer.
