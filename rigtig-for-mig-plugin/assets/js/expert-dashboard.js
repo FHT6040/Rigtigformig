@@ -138,7 +138,27 @@
             }
         }
 
-        $catCheckboxes.on('change', '.rfm-category-checkbox', updateCategoryLimit);
+        // Handle checkbox change with validation
+        $catCheckboxes.on('change', '.rfm-category-checkbox', function(e) {
+            var $this = $(this);
+            var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
+            var checkedCount = $checkboxes.filter(':checked').length;
+
+            console.log('RFM: Checkbox clicked. Is checked:', $this.is(':checked'), 'Total checked:', checkedCount);
+
+            // If user is trying to check more than allowed, prevent it
+            if ($this.is(':checked') && checkedCount > maxCats) {
+                console.log('RFM: Preventing check - would exceed limit');
+                $this.prop('checked', false);
+                $('#rfm-category-limit-notice').show();
+                return false;
+            }
+
+            // Update limit state
+            updateCategoryLimit();
+        });
+
+        // Initial update
         updateCategoryLimit();
 
         // ========================================
