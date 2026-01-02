@@ -1,270 +1,210 @@
 /**
- * Rigtig for mig - User Dashboard JavaScript
+ * User Dashboard JavaScript
+ *
+ * v3.7.2 - LiteSpeed Cache compatibility improvements
+ * - Added cache-buster and timestamp to AJAX requests
+ * - Added Cache-Control headers to AJAX calls
+ *
+ * v3.7.0 - Complete clean rebuild following Expert Dashboard pattern
+ * - Profile form submission
+ * - Logout functionality
+ * - Clean error handling
+ * - Uses rfmUserDashboard for ajaxurl (no dependency on rfm-public)
  *
  * @package Rigtig_For_Mig
- * @since 3.4.1
+ * @since 3.7.0
  */
 
 (function($) {
     'use strict';
 
+    // ========================================
+    // SAFETY CHECK: Verify dependencies
+    // ========================================
+    if (typeof rfmUserDashboard === 'undefined') {
+        console.error('RFM User Dashboard: rfmUserDashboard object is not defined! Cannot initialize.');
+        console.error('RFM User Dashboard: This likely means the script localization failed or is cached.');
+        console.error('RFM User Dashboard: Please clear all caches and reload the page.');
+        return;
+    }
+
+    // Debug logging if enabled
+    if (rfmUserDashboard.debug) {
+        console.log('RFM User Dashboard v' + rfmUserDashboard.version + ' initialized');
+        console.log('AJAX URL:', rfmUserDashboard.ajaxurl);
+        console.log('Nonce available:', rfmUserDashboard.nonce ? 'Yes' : 'No');
+    }
+
     $(document).ready(function() {
 
-        // Profile form handler
+        // ========================================
+        // PROFILE FORM SUBMISSION
+        // ========================================
         $('#rfm-user-profile-form').on('submit', function(e) {
             e.preventDefault();
 
             var $form = $(this);
             var $button = $form.find('button[type="submit"]');
-            var $messages = $form.find('.rfm-form-messages');
+            var $message = $('#rfm-user-dashboard-message');
             var originalText = $button.text();
 
+            // Use nonce from localized data (fresh on every page load)
+            var nonce = rfmUserDashboard.nonce || $form.find('[name="rfm_user_nonce"]').val();
+
+            // Collect form data with cache-busting parameters
             var formData = {
                 action: 'rfm_update_user_profile',
-                nonce: rfmUserDashboard.nonce,
+                rfm_user_nonce: nonce,
                 display_name: $('#user_display_name').val(),
                 phone: $('#user_phone').val(),
-                bio: $('#user_bio').val()
+                bio: $('#user_bio').val(),
+                _cache_buster: rfmUserDashboard.cache_buster || Date.now(),
+                _timestamp: rfmUserDashboard.timestamp || Date.now()
             };
 
-            $button.prop('disabled', true).text(rfmUserDashboard.strings.saving);
+            // Validate display name
+            if (!formData.display_name || formData.display_name.trim() === '') {
+                $message.html('<div class="rfm-error">Visningsnavn er påkrævet</div>');
+                return;
+            }
+
+            if (rfmUserDashboard.debug) {
+                console.log('RFM User Dashboard: Submitting profile update', formData);
+            }
+
+            $button.prop('disabled', true).text(rfmUserDashboard.strings.savingText);
+            $message.html('');
 
             $.ajax({
                 url: rfmUserDashboard.ajaxurl,
                 type: 'POST',
                 data: formData,
+                cache: false,  // Prevent caching
+                dataType: 'json',  // Expect JSON response
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 success: function(response) {
+                    if (rfmUserDashboard.debug) {
+                        console.log('RFM User Dashboard: AJAX Success Response:', response);
+                    }
+
                     if (response.success) {
-                        $messages.html('<div class="rfm-message rfm-message-success">' + response.data.message + '</div>');
+                        $message.html('<div class="rfm-success">' + response.data.message + '</div>');
+
+                        // Scroll to message
+                        $('html, body').animate({
+                            scrollTop: $message.offset().top - 100
+                        }, 300);
                     } else {
-                        $messages.html('<div class="rfm-message rfm-message-error">' + (response.data.message || rfmUserDashboard.strings.error) + '</div>');
+                        var errorMsg = (response.data && response.data.message) ? response.data.message : rfmUserDashboard.strings.errorText;
+                        $message.html('<div class="rfm-error">' + errorMsg + '</div>');
+
+                        if (rfmUserDashboard.debug && response.data && response.data.debug) {
+                            console.error('RFM User Dashboard: Error details:', response.data.debug);
+                        }
                     }
                     $button.prop('disabled', false).text(originalText);
                 },
                 error: function(xhr, status, error) {
-                    $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + ': ' + error + '</div>');
+                    console.error('RFM User Dashboard: AJAX Error');
+                    console.error('Status:', status);
+                    console.error('Error:', error);
+                    console.error('Status Code:', xhr.status);
+                    console.error('Response Text:', xhr.responseText);
+
+                    var errorMessage = rfmUserDashboard.strings.errorText;
+
+                    // Check for redirect (302) or other HTTP errors
+                    if (xhr.status === 302 || xhr.status === 301) {
+                        errorMessage = 'Session udløbet eller nonce fejl. Genindlæs siden og prøv igen.';
+                        console.error('RFM User Dashboard: 302 Redirect detected - likely nonce failure or session expired');
+                    } else if (xhr.status === 403) {
+                        errorMessage = 'Sikkerhedstjek fejlede. Genindlæs siden og prøv igen.';
+                    } else if (xhr.status === 401) {
+                        errorMessage = 'Du er ikke logget ind. Logger ind igen...';
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 2000);
+                    } else if (xhr.status === 0) {
+                        errorMessage = 'Netværksfejl eller CORS problem. Tjek din internetforbindelse.';
+                    }
+
+                    // Try to parse error response as JSON
+                    try {
+                        var errorData = JSON.parse(xhr.responseText);
+                        if (errorData.data && errorData.data.message) {
+                            errorMessage = errorData.data.message;
+                        }
+                    } catch(e) {
+                        // Not JSON - might be HTML redirect
+                        if (xhr.responseText.indexOf('<!DOCTYPE') !== -1 || xhr.responseText.indexOf('<html') !== -1) {
+                            console.error('RFM User Dashboard: Received HTML instead of JSON - likely a redirect or error page');
+                            errorMessage = 'Server returnerede forkert svar format. Tjek konsollen for detaljer.';
+                        }
+                    }
+
+                    $message.html('<div class="rfm-error">' + errorMessage + '</div>');
                     $button.prop('disabled', false).text(originalText);
                 }
             });
         });
 
-        // Avatar upload
-        $('#user_avatar_upload').on('change', function(e) {
-            var file = e.target.files[0];
-            if (!file) return;
-
-            // Preview
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                $('#user-avatar-preview').attr('src', e.target.result);
-            };
-            reader.readAsDataURL(file);
-
-            // Upload
-            var formData = new FormData();
-            formData.append('action', 'rfm_upload_user_avatar');
-            formData.append('nonce', rfmUserDashboard.nonce);
-            formData.append('avatar', file);
-
-            $.ajax({
-                url: rfmUserDashboard.ajaxurl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        $('.rfm-form-messages').html('<div class="rfm-message rfm-message-success">' + response.data.message + '</div>');
-                    } else {
-                        $('.rfm-form-messages').html('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    $('.rfm-form-messages').html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
-                }
-            });
-        });
-
-        // Password change form handler
-        $('#rfm-password-change-form').on('submit', function(e) {
-            e.preventDefault();
-
-            var $form = $(this);
-            var $button = $form.find('button[type="submit"]');
-            var $messages = $form.find('.rfm-password-messages');
-            var originalText = $button.text();
-
-            var current_password = $('#current_password').val();
-            var new_password = $('#new_password').val();
-            var confirm_password = $('#confirm_password').val();
-
-            // Client-side validation
-            if (!current_password || !new_password || !confirm_password) {
-                $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.fillAllFields + '</div>');
-                return;
-            }
-
-            if (new_password !== confirm_password) {
-                $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.passwordMismatch + '</div>');
-                return;
-            }
-
-            if (new_password.length < 8) {
-                $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.passwordTooShort + '</div>');
-                return;
-            }
-
-            $button.prop('disabled', true).text(rfmUserDashboard.strings.changingPassword);
-
-            $.ajax({
-                url: rfmUserDashboard.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'rfm_update_user_profile',
-                    nonce: rfmUserDashboard.nonce,
-                    current_password: current_password,
-                    new_password: new_password
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $messages.html('<div class="rfm-message rfm-message-success">' + response.data.message + '</div>');
-                        $form[0].reset();
-                    } else {
-                        $messages.html('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
-                    }
-                    $button.prop('disabled', false).text(originalText);
-                },
-                error: function(xhr, status, error) {
-                    $messages.html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
-                    $button.prop('disabled', false).text(originalText);
-                }
-            });
-        });
-
-        // Logout button
-        $('#rfm-logout-btn').on('click', function(e) {
+        // ========================================
+        // LOGOUT BUTTON
+        // ========================================
+        $('#rfm-user-logout-btn').on('click', function(e) {
             e.preventDefault();
 
             var $button = $(this);
+            var $message = $('#rfm-user-dashboard-message');
+            var originalText = $button.text();
+
+            // Use nonce from localized data (fresh on every page load)
+            var nonce = rfmUserDashboard.nonce || $('[name="rfm_user_nonce"]').val();
+
+            if (rfmUserDashboard.debug) {
+                console.log('RFM User Dashboard: Logout request initiated');
+            }
+
             $button.prop('disabled', true).text(rfmUserDashboard.strings.loggingOut);
 
             $.ajax({
                 url: rfmUserDashboard.ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'rfm_logout',
-                    nonce: rfmUserDashboard.nonce
+                    action: 'rfm_user_logout',
+                    rfm_user_nonce: nonce,
+                    _cache_buster: rfmUserDashboard.cache_buster || Date.now(),
+                    _timestamp: rfmUserDashboard.timestamp || Date.now()
                 },
-                cache: false,
+                cache: false,  // Prevent caching
+                dataType: 'json',  // Expect JSON response
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 success: function(response) {
-                    // Clear service worker caches if available
-                    if ('caches' in window) {
-                        caches.keys().then(function(names) {
-                            for (let name of names) {
-                                caches.delete(name);
-                            }
-                        });
+                    if (rfmUserDashboard.debug) {
+                        console.log('RFM User Dashboard: Logout successful', response);
                     }
 
-                    // Force hard reload without cache
-                    if (response.data && response.data.clear_cache) {
-                        window.location.replace(response.data.redirect || rfmUserDashboard.homeUrl);
+                    if (response.success && response.data.redirect) {
+                        window.location.href = response.data.redirect;
                     } else {
-                        window.location.href = response.data.redirect || rfmUserDashboard.homeUrl;
+                        // Fallback redirect to home
+                        window.location.href = '/';
                     }
                 },
                 error: function(xhr, status, error) {
-                    // Force redirect anyway
-                    window.location.replace(rfmUserDashboard.homeUrl);
-                }
-            });
-        });
+                    console.error('RFM User Dashboard: Logout Error');
+                    console.error('Status:', status);
+                    console.error('Error:', error);
+                    console.error('Status Code:', xhr.status);
 
-        // Download user data (GDPR)
-        $('#rfm-download-data').on('click', function(e) {
-            e.preventDefault();
-
-            var $button = $(this);
-            var originalText = $button.text();
-
-            $button.prop('disabled', true).text(rfmUserDashboard.strings.downloading);
-
-            $.ajax({
-                url: rfmUserDashboard.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'rfm_update_user_profile',
-                    nonce: rfmUserDashboard.nonce,
-                    download_data: true
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Create download link
-                        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(response.data.user_data, null, 2));
-                        var downloadAnchorNode = document.createElement('a');
-                        downloadAnchorNode.setAttribute("href", dataStr);
-                        downloadAnchorNode.setAttribute("download", "mine-data-" + new Date().toISOString().split('T')[0] + ".json");
-                        document.body.appendChild(downloadAnchorNode);
-                        downloadAnchorNode.click();
-                        downloadAnchorNode.remove();
-
-                        $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-success">' + rfmUserDashboard.strings.dataDownloaded + '</div>');
-                        setTimeout(function() {
-                            $('.rfm-message-success').fadeOut();
-                        }, 3000);
-                    } else {
-                        $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
-                    }
-                    $button.prop('disabled', false).text(originalText);
-                },
-                error: function(xhr, status, error) {
-                    $('.rfm-gdpr-info').prepend('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.error + '</div>');
-                    $button.prop('disabled', false).text(originalText);
-                }
-            });
-        });
-
-        // Delete account modal handlers
-        $('#rfm-delete-account').on('click', function() {
-            $('#rfm-delete-modal').fadeIn();
-        });
-
-        $('#rfm-cancel-delete').on('click', function() {
-            $('#rfm-delete-modal').fadeOut();
-            $('#delete_confirm_password').val('');
-            $('.rfm-modal-messages').html('');
-        });
-
-        $('#rfm-confirm-delete').on('click', function() {
-            var password = $('#delete_confirm_password').val();
-
-            if (!password) {
-                $('.rfm-modal-messages').html('<div class="rfm-message rfm-message-error">' + rfmUserDashboard.strings.enterPassword + '</div>');
-                return;
-            }
-
-            if (!confirm(rfmUserDashboard.strings.finalWarning)) {
-                return;
-            }
-
-            $(this).prop('disabled', true).text(rfmUserDashboard.strings.deleting);
-
-            $.ajax({
-                url: rfmUserDashboard.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'rfm_delete_user_account',
-                    nonce: rfmUserDashboard.nonce,
-                    password: password
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        window.location.href = rfmUserDashboard.homeUrl;
-                    } else {
-                        $('.rfm-modal-messages').html('<div class="rfm-message rfm-message-error">' + response.data.message + '</div>');
-                        $('#rfm-confirm-delete').prop('disabled', false).text(rfmUserDashboard.strings.confirmDelete);
-                    }
+                    // Force redirect to home on error (logout anyway for safety)
+                    window.location.href = '/';
                 }
             });
         });

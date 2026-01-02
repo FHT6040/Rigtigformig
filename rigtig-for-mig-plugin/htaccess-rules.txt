@@ -1,0 +1,44 @@
+# ============================================
+# RFM User Dashboard - Cache Prevention
+# Add these rules to the TOP of your WordPress .htaccess file
+# (Place BEFORE the "# BEGIN WordPress" section)
+# ============================================
+
+# Prevent caching of admin-ajax.php (ALL AJAX requests)
+<Files "admin-ajax.php">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </IfModule>
+    <IfModule LiteSpeed>
+        CacheDisable public
+    </IfModule>
+</Files>
+
+# Prevent caching of User Dashboard pages
+<IfModule mod_rewrite.c>
+    # If URL contains user dashboard shortcode or page
+    RewriteCond %{REQUEST_URI} /user-dashboard [NC,OR]
+    RewriteCond %{QUERY_STRING} page_id=.*user.*dashboard [NC]
+    RewriteRule .* - [E=Cache-Control:no-cache]
+
+    # Set no-cache headers for dashboard pages
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate" env=Cache-Control
+        Header set Pragma "no-cache" env=Cache-Control
+        Header set Expires "0" env=Cache-Control
+    </IfModule>
+</IfModule>
+
+# LiteSpeed specific: Disable cache for logged-in users
+<IfModule LiteSpeed>
+    # Don't cache pages for logged-in users
+    RewriteEngine On
+    RewriteCond %{HTTP_COOKIE} wordpress_logged_in [NC]
+    RewriteRule .* - [E=Cache-Control:vary=1]
+</IfModule>
+
+# ============================================
+# End RFM Cache Prevention
+# ============================================

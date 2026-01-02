@@ -2,12 +2,6 @@
 /**
  * User Admin Management
  *
- * v3.6.6: Updated to use WordPress native user_meta instead of custom table
- * - Matches User Dashboard architecture from v3.6.5
- * - Uses get_user_meta() for reading user data
- * - No longer queries wp_rfm_user_profiles table
- * - Ensures data consistency between frontend and backend
- *
  * @package Rigtig_For_Mig
  */
 
@@ -218,10 +212,14 @@ class RFM_User_Admin {
                     </thead>
                     <tbody>
                         <?php foreach ($users as $user):
-                            // v3.6.6: Use WordPress native user_meta instead of custom table
+                            $profile = $wpdb->get_row($wpdb->prepare(
+                                "SELECT * FROM $profiles_table WHERE user_id = %d",
+                                $user->ID
+                            ));
+
                             $is_online = $online_status->is_user_online($user->ID);
                             $verified = RFM_Email_Verification::is_user_verified($user->ID);
-                            $last_login = get_user_meta($user->ID, '_rfm_last_login', true);
+                            $last_login = $profile ? $profile->last_login : null;
                         ?>
                             <tr>
                                 <td>
@@ -239,10 +237,7 @@ class RFM_User_Admin {
                                     </a>
                                 </td>
                                 <td>
-                                    <?php
-                                    $phone = get_user_meta($user->ID, '_rfm_phone', true);
-                                    echo $phone ? esc_html($phone) : '—';
-                                    ?>
+                                    <?php echo $profile && $profile->phone ? esc_html($profile->phone) : '—'; ?>
                                 </td>
                                 <td>
                                     <?php if ($verified): ?>
@@ -431,26 +426,24 @@ class RFM_User_Admin {
         
         // Data rows
         foreach ($users as $user) {
-            // v3.6.6: Use WordPress native user_meta instead of custom table
+            $profile = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $profiles_table WHERE user_id = %d",
+                $user->ID
+            ));
+
             $verified = RFM_Email_Verification::is_user_verified($user->ID);
-
-            // Get user meta
-            $phone = get_user_meta($user->ID, '_rfm_phone', true);
-            $bio = get_user_meta($user->ID, '_rfm_bio', true);
-            $gdpr_consent = get_user_meta($user->ID, '_rfm_gdpr_consent', true);
-            $last_login = get_user_meta($user->ID, '_rfm_last_login', true);
-
+            
             fputcsv($output, array(
                 $user->ID,
                 $user->user_login,
                 $user->user_email,
                 $user->display_name,
-                $phone ? $phone : '',
-                $bio ? $bio : '',
+                $profile ? $profile->phone : '',
+                $profile ? $profile->bio : '',
                 $verified ? 'Ja' : 'Nej',
-                $gdpr_consent ? 'Ja' : 'Nej',
+                $profile && $profile->gdpr_consent ? 'Ja' : 'Nej',
                 $user->user_registered,
-                $last_login ? $last_login : ''
+                $profile && $profile->last_login ? $profile->last_login : ''
             ));
         }
         

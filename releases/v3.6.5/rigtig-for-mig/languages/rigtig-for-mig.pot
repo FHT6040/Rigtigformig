@@ -1,0 +1,80 @@
+# Copyright (C) 2024 Rigtig for mig
+# This file is distributed under the same license as the Rigtig for mig plugin.
+msgid ""
+msgstr ""
+"Project-Id-Version: Rigtig for mig 1.0.0\n"
+"Report-Msgid-Bugs-To: https://rigtigformig.dk\n"
+"POT-Creation-Date: 2024-11-10 12:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: rigtig-for-mig.php
+msgid "Indlæser..."
+msgstr ""
+
+msgid "Der opstod en fejl. Prøv igen."
+msgstr ""
+
+#: includes/class-rfm-post-types.php
+msgid "Eksperter"
+msgstr ""
+
+msgid "Ekspert"
+msgstr ""
+
+msgid "Tilføj Ny"
+msgstr ""
+
+msgid "Profilbillede"
+msgstr ""
+
+#: includes/class-rfm-taxonomies.php
+msgid "Hjerne & Psyke"
+msgstr ""
+
+msgid "Krop & Bevægelse"
+msgstr ""
+
+msgid "Mad & Sundhed"
+msgstr ""
+
+msgid "Sjæl & Mening"
+msgstr ""
+
+#: includes/class-rfm-ratings.php
+msgid "Du skal være logget ind for at bedømme en ekspert."
+msgstr ""
+
+msgid "Tak for din bedømmelse!"
+msgstr ""
+
+#: includes/class-rfm-subscriptions.php
+msgid "Gratis"
+msgstr ""
+
+msgid "Standard"
+msgstr ""
+
+msgid "Premium"
+msgstr ""
+
+#: includes/class-rfm-shortcodes.php
+msgid "Ingen eksperter fundet."
+msgstr ""
+
+msgid "Søg efter ekspert eller specialisering..."
+msgstr ""
+
+msgid "Alle Kategorier"
+msgstr ""
+
+msgid "By"
+msgstr ""
+
+msgid "Søg"
+msgstr ""

@@ -1,0 +1,181 @@
+=== Rigtig For Mig - Ekspert Markedsplads ===
+
+Changelog
+=========
+
+= 3.0.0 - December 2024 =
+* MAJOR: Nyt tab-baseret dashboard system med kategori-specifikke profiler
+* NEW: Shortcode [rfm_expert_dashboard_tabbed] - komplet tab-baseret dashboard
+* NEW: [rfm_expert_dashboard] bruger nu automatisk det nye tab-system
+* NEW: "Generelt" fane indeholder:
+  - Basis information (navn, email, telefon)
+  - Hjemmeside og firma (Standard+)
+  - Sprog valg
+  - Kategori valg med dynamisk tab-oprettelse
+* NEW: Kategori-specifikke faner med:
+  - Separat "Om mig" tekst per kategori
+  - År startet i praksis per kategori
+  - Uddannelser relateret til kategorien
+  - Specialiseringer inden for kategorien
+* NEW: Firmanavn vises på ekspert-kort og profil (kun Standard/Premium)
+* NEW: Kategori-tabs på ekspert profil-siden for eksperter med flere kategorier
+* NEW: URL parameter ?kategori=slug linker direkte til kategori-specifik info
+* NEW: Ekspert-kort linker nu med kategori-parameter fra kategori-lister
+* NEW: Ny klasse RFM_Category_Profiles til håndtering af kategori-specifikke data
+* NEW: AJAX handlers for separat gem af generelle og kategori-specifikke data
+* NEW: Kategori-data gemmes som: _rfm_category_profile_{category_id}
+* NEW: Automatisk sammenfletning af specialiseringer på tværs af kategorier
+* NEW: Certifikat/diplom billeder vises på profil-siden med thumbnail og "Se certifikat" link
+* NEW: JavaScript handler for billede upload i kategori-uddannelser
+* IMPROVED: Ekspert profil-side viser nu uddannelser fra både gammelt og nyt format
+* IMPROVED: Års erfaring beregnes dynamisk fra experience_start_year
+* IMPROVED: Moderne tab-navigation med kategori-farve indikatorer
+* IMPROVED: Responsivt design med mobile-optimerede tabs
+* IMPROVED: Animeret tab-skift med fade-effekt
+* STYLING: Omfattende nye CSS styles for tab-system
+* STYLING: Ny uddannelses-liste design med certifikat-thumbnails
+* STYLING: Forbedret kategori-valg med farve-kodning
+* STYLING: Ny sprog-grid layout
+* STYLING: Firmanavn styling på kort og profil
+* STYLING: Profil kategori-tabs styling
+* ARCHITECTURE: Modular data-struktur til fremtidig kategori-specifik frontend-visning
+* ARCHITECTURE: Forberedt til avanceret søgning på lokation, kategori, specialisering
+
+= 2.9.5 - December 2024 =
+* CHANGED: Standard kategori-begrænsning ændret fra 3 til 2 kategorier
+* NEW: Specialiseringer kan nu vælges i ekspert dashboard
+* NEW: Specialiserings-begrænsning baseret på abonnement:
+  - Gratis: 1 specialisering
+  - Standard: 3 specialiseringer  
+  - Premium: 7 specialiseringer
+* NEW: JavaScript validering for specialiserings-grænser
+* NEW: Server-side validering af specialiserings-grænser
+* NEW: Pæn grid-layout for specialiserings-valg med hover-effekter
+* IMPROVED: CSS styling for specialiserings-checkboxes
+
+= 2.9.4 - December 2024 =
+* NEW: "Sprog:" label tilføjet foran sprog på ekspert-kort for klarhed
+* FIX: Email-verificerede profiler bliver nu automatisk publiceret (respekterer admin-indstilling)
+* FIX: Profiler sættes til "Kladde" under oprettelse når email verificering er påkrævet
+* NEW: Kategori-begrænsning baseret på abonnement:
+  - Gratis: Max 1 kategori
+  - Standard: Max 3 kategorier
+  - Premium: Alle kategorier
+* NEW: Kategori-limite info vises i registrering og dashboard
+* NEW: JavaScript validering forhindrer valg af flere kategorier end tilladt
+* NEW: Server-side validering af kategori-grænser
+* IMPROVED: Visuelt feedback når kategori-grænse er nået
+
+= 2.9.3 - December 2024 =
+* IMPROVED: Admin "Alle Eksperter" side - fjernet problematiske kolonner der viste tekst vertikalt
+* IMPROVED: Renere kolonnestruktur: Status, Navn, Plan, Rating, Verificeret, Sidst aktiv, Forfatter, Kategori, Dato
+* NEW: Ekspert-kort på frontend viser nu:
+  - Første uddannelse/certificering
+  - Dynamisk beregnet års erfaring (fra "År startet i praksis")
+  - Sprog ekspert arbejder på (max 3 vises + "+X" hvis flere)
+* NEW: Nyt felt i uddannelser: "År startet i praksis" - bruges til at beregne års erfaring dynamisk
+* IMPROVED: Års erfaring opdateres automatisk hvert år uden manuel vedligeholdelse
+* STYLING: Nye CSS styles for uddannelse og sprog på ekspert-kort
+
+= 2.9.2 - December 2024 =
+* FIX: Online status tracking virker nu korrekt
+* FIX: Heartbeat script indsat direkte i footer med korrekt nonce håndtering
+* FIX: Aktivitets-tracking aktiveres ved sidevisning og når bruger vender tilbage til fanen
+* CHANGED: Uddannelses-limits opdateret til:
+  - Free: Max 1 uddannelse (ingen billede upload)
+  - Standard: Max 3 uddannelser + billede upload
+  - Premium: Max 7 uddannelser + billede upload
+* CHANGED: Institution felt er ikke længere påkrævet
+* IMPROVED: Mere præcis beskrivelsestekst for hver abonnementstype
+
+= 2.9.1 - December 2024 =
+* NEW: Fuld fungerende "Tilføj uddannelse" funktionalitet i frontend dashboard
+* NEW: Uddannelses-repeater med dynamisk tilføjelse og fjernelse
+* NEW: Billede upload til uddannelser/certifikater (kun Standard og Premium medlemmer)
+* NEW: AJAX-baseret billede upload med preview og fejlhåndtering
+* NEW: Fleksible begrænsninger per abonnementsniveau:
+  - Free: Max 3 uddannelser (ingen billede upload)
+  - Standard: Max 10 uddannelser + billede upload
+  - Premium: Ubegrænset antal uddannelser + billede upload
+* NEW: Validering af billedtyper (JPG, PNG, GIF, WebP) og filstørrelse (max 5MB)
+* IMPROVED: Responsivt design til uddannelses-sektionen
+* IMPROVED: Animeret tilføjelse/fjernelse af uddannelser
+* IMPROVED: Automatisk scroll til ny uddannelse ved tilføjelse
+* TECHNICAL: Ny AJAX handler rfm_upload_education_image
+* TECHNICAL: Uddannelser gemmes som _rfm_educations post meta
+
+= 2.9.0 - December 2024 =
+* NEW: Online/Offline status tracking for eksperter
+* NEW: Grøn/rød status-indikator i admin dashboard og ekspert-liste
+* NEW: "Online Nu" statistik-boks i admin dashboard
+* NEW: "Sidst aktiv" kolonne i ekspert-listen
+* NEW: Heartbeat system til at holde online-status opdateret
+* IMPROVED: Sprog-felter hentes nu dynamisk fra Profil Felter systemet
+* IMPROVED: "Påkrævet" indstillinger for sprog synkroniseres automatisk fra admin
+* IMPROVED: Feltændringer i admin reflekteres nu direkte i frontend dashboard
+* TECHNICAL: Ny klasse RFM_Online_Status til aktivitets-tracking
+* TECHNICAL: 15 minutters threshold for online-status (kan konfigureres)
+
+= 2.8.8 - November 2024 =
+* REVERTED: Dashboard tilbage til version 2.8.0 stil med alt-i-én interface
+* NEW: Dashboard viser nu både statistik OG redigerings-felter på samme side
+* NEW: Basis Information sektion direkte i dashboard
+* NEW: Om Mig sektion direkte i dashboard
+* NEW: Låste felter (Hjemmeside, Firma navn) med orange "Opgrader" knapper for Free-brugere
+* NEW: Uddannelser sektion med "Tilføj uddannelse" knap
+* NEW: Sprog sektion med 11 sprog-valgmuligheder
+* NEW: Gul "Gem ændringer" knap i bunden af dashboard
+* IMPROVED: Alt kan redigeres direkte fra dashboard - ingen separat "Rediger profil" side nødvendig
+* IMPROVED: Mere engagerende og komplet brugeroplevelse
+* NOTE: "Rediger profil" side eksisterer stadig som alternativ adgang
+
+= 2.8.7 - November 2024 =
+* FIX: "Glemt adgangskode?" link peger nu til korrekt side (ikke "Nothing found")
+* IMPROVED: Låste felter skjules helt fra dashboard for at holde det rent og fokuseret
+* IMPROVED: Dashboardet viser nu KUN felter brugeren har adgang til
+* IMPROVED: Mere intuitivt og mindre forvirrende brugerinterface
+* NOTE: Låste felter kan vises igen ved at ændre render_locked_field() i koden
+
+= 2.8.6 - November 2024 =
+* NEW: Komplet "Glemt adgangskode" funktionalitet
+* NEW: Password reset via email med sikker token system
+* NEW: To nye shortcodes: [rfm_lost_password] og [rfm_reset_password]
+* NEW: Automatiske bekræftelses-emails ved password ændring
+* FIX: "Nothing found" fejl ved password reset er nu løst
+* IMPROVED: Sikker password reset med 24-timers gyldighed
+* IMPROVED: Brugervenlige fejlbeskeder og guides
+
+= 2.8.5 - November 2024 =
+* NEW: Diplom/Certifikat billede upload til uddannelser
+* NEW: Billede upload funktionalitet i repeater felter
+* NEW: Subscription-baseret adgang til billede upload (Standard og Premium)
+* NEW: Automatisk billede håndtering med preview og sletning
+* NEW: Validering af billede typer og størrelser
+* IMPROVED: Repeater item rendering med subscription checks på subfelt-niveau
+* IMPROVED: AJAX file upload håndtering for repeater felter
+* IMPROVED: UI feedback for låste felter baseret på medlemsniveau
+
+= 2.5.0 - November 2024 =
+* NEW: Fleksibelt felt-system med admin-baseret konfiguration
+* NEW: Subscription-baseret adgang til profil-felter
+* NEW: Repeater felter til uddannelser, certifikater, specialer
+* NEW: Admin panel for felt-administration (Rigtig For Mig → Profil Felter)
+* NEW: Frontend profil editor shortcode [rfm_expert_profile_editor]
+* NEW: Standard felt-grupper (basis info, uddannelser, certifikater, specialer, priser)
+* NEW: Konfigurerbare limits per subscription tier
+* NEW: AJAX-baseret profil-lagring
+* IMPROVED: Låste felter med upgrade-prompts for Free/Standard brugere
+* IMPROVED: Automatisk frontend rendering baseret på felt-definitioner
+
+= 2.4.2 - Oktober 2024 =
+* FIX: Bug fixes og stabilitetsforbedringer
+* IMPROVED: UI forbedringer
+
+= 2.3.6 =
+* Initial release med basis funktionalitet
+* Custom post types og taxonomies
+* Email verification system
+* Rating system
+* Subscription management
+* Frontend registration
+* Expert profiles
