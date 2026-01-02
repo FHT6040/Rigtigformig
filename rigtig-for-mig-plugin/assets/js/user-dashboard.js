@@ -101,11 +101,14 @@
 
                         $('#rfm-user-dashboard-message').html('<div class="rfm-success">' + response.data.message + '</div>');
                     } else {
-                        $('#rfm-user-dashboard-message').html('<div class="rfm-error">' + response.data.message + '</div>');
+                        var errorMsg = (response.data && response.data.message) ? response.data.message : 'Upload fejlede. Prøv igen.';
+                        $('#rfm-user-dashboard-message').html('<div class="rfm-error">' + errorMsg + '</div>');
                     }
                     $button.prop('disabled', false).text(originalText);
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    console.error('Avatar upload error:', status, error);
+                    console.error('Response:', xhr.responseText);
                     $('#rfm-user-dashboard-message').html('<div class="rfm-error">Upload fejlede. Prøv igen.</div>');
                     $button.prop('disabled', false).text(originalText);
                 }

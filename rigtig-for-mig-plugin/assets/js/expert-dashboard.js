@@ -119,16 +119,22 @@
         var $catCheckboxes = $('#rfm-tabbed-categories');
         var maxCats = parseInt($catCheckboxes.data('max')) || 1;
 
+        console.log('RFM Expert Dashboard: Category limit initialized. Max categories:', maxCats);
+
         function updateCategoryLimit() {
             var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
             var checkedCount = $checkboxes.filter(':checked').length;
 
+            console.log('RFM: Updating category limit. Checked:', checkedCount, 'Max:', maxCats);
+
             if (checkedCount >= maxCats) {
                 $checkboxes.not(':checked').prop('disabled', true);
                 $('#rfm-category-limit-notice').show();
+                console.log('RFM: Category limit reached. Disabling unchecked boxes.');
             } else {
                 $checkboxes.prop('disabled', false);
                 $('#rfm-category-limit-notice').hide();
+                console.log('RFM: Category limit not reached. Enabling all boxes.');
             }
         }
 

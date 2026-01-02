@@ -411,8 +411,18 @@ class RFM_User_Dashboard {
         // Send LiteSpeed-specific no-cache headers FIRST
         $this->send_litespeed_nocache_headers();
 
+        // Debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('RFM: Avatar upload request received');
+            error_log('RFM: POST data: ' . print_r($_POST, true));
+            error_log('RFM: FILES data: ' . print_r($_FILES, true));
+        }
+
         // Verify nonce
         if (!wp_verify_nonce($_POST['nonce'] ?? '', 'rfm_user_dashboard')) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('RFM: Nonce verification failed');
+            }
             wp_send_json_error(array('message' => __('Sikkerhedstjek fejlede. Prøv igen.', 'rigtig-for-mig')));
         }
 
