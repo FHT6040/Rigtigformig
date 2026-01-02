@@ -112,7 +112,7 @@ class RFM_User_Dashboard {
 
         // Localize script with translations and data
         wp_localize_script('rfm-user-dashboard', 'rfmUserDashboard', array(
-            'ajaxurl' => admin_url('admin-ajax.php'),
+            'ajaxurl' => RFM_PLUGIN_URL . 'ajax-handler.php',  // Direct AJAX handler to avoid redirects
             'nonce' => $nonce,  // Fresh nonce
             'cache_buster' => $cache_buster,  // NEW: Cache-buster for AJAX requests
             'timestamp' => time(),  // NEW: Current timestamp
