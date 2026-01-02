@@ -50,20 +50,30 @@ class RFM_User_Dashboard {
             return;
         }
 
+        // AGGRESSIVE CACHE BUSTING: Use version + timestamp
+        // This ensures LiteSpeed Cache serves the correct file
+        $script_version = RFM_VERSION . '.' . filemtime(RFM_PLUGIN_DIR . 'assets/js/user-dashboard.js');
+
         // Enqueue dashboard script globally on all frontend pages
         // This matches the approach used by Expert Dashboard
         wp_enqueue_script(
             'rfm-user-dashboard',
             RFM_PLUGIN_URL . 'assets/js/user-dashboard.js',
             array('jquery'),
-            RFM_VERSION,
+            $script_version,  // Cache-busting version
             true
         );
+
+        // Generate fresh nonce on every page load
+        $nonce = wp_create_nonce('rfm_user_dashboard');
 
         // Localize script with translations and data
         // Same pattern as Expert Dashboard
         wp_localize_script('rfm-user-dashboard', 'rfmUserDashboard', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => $nonce,  // Fresh nonce
+            'debug' => defined('WP_DEBUG') && WP_DEBUG,
+            'version' => RFM_VERSION,
             'strings' => array(
                 'savingText' => __('Gemmer...', 'rigtig-for-mig'),
                 'submitText' => __('Gem ændringer', 'rigtig-for-mig'),
@@ -71,6 +81,23 @@ class RFM_User_Dashboard {
                 'loggingOut' => __('Logger ud...', 'rigtig-for-mig')
             )
         ));
+
+        // Add anti-cache headers for AJAX requests
+        add_action('wp_head', array($this, 'add_nocache_headers'), 1);
+    }
+
+    /**
+     * Add no-cache headers to prevent LiteSpeed from caching pages with the dashboard
+     */
+    public function add_nocache_headers() {
+        if (!is_user_logged_in()) {
+            return;
+        }
+
+        echo "<!-- RFM User Dashboard v" . RFM_VERSION . " - Cache Bypass Active -->\n";
+        echo '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />' . "\n";
+        echo '<meta http-equiv="Pragma" content="no-cache" />' . "\n";
+        echo '<meta http-equiv="Expires" content="0" />' . "\n";
     }
 
     /**
@@ -191,28 +218,70 @@ class RFM_User_Dashboard {
      * @since 3.7.0
      */
     public function handle_profile_update() {
-        check_ajax_referer('rfm_user_dashboard', 'rfm_user_nonce');
+        // COMPREHENSIVE ERROR LOGGING
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('RFM User Dashboard: Profile update request received');
+            error_log('RFM User Dashboard: POST data = ' . print_r($_POST, true));
+            error_log('RFM User Dashboard: User logged in = ' . (is_user_logged_in() ? 'yes' : 'no'));
+            error_log('RFM User Dashboard: User ID = ' . get_current_user_id());
+        }
+
+        // Send no-cache headers for AJAX
+        nocache_headers();
+        header('Content-Type: application/json; charset=utf-8');
+
+        // Verify nonce
+        try {
+            check_ajax_referer('rfm_user_dashboard', 'rfm_user_nonce');
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('RFM User Dashboard: Nonce verification FAILED - ' . $e->getMessage());
+            }
+            wp_send_json_error(array(
+                'message' => __('Sikkerhedstjek fejlede. Genindlæs siden og prøv igen.', 'rigtig-for-mig'),
+                'debug' => defined('WP_DEBUG') && WP_DEBUG ? 'Nonce verification failed' : null
+            ), 403);
+        }
 
         if (!is_user_logged_in()) {
-            wp_send_json_error(array('message' => __('Du skal være logget ind.', 'rigtig-for-mig')));
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('RFM User Dashboard: User not logged in');
+            }
+            wp_send_json_error(array(
+                'message' => __('Du skal være logget ind.', 'rigtig-for-mig'),
+                'debug' => defined('WP_DEBUG') && WP_DEBUG ? 'User not logged in' : null
+            ), 401);
         }
 
         $user_id = get_current_user_id();
 
         // Sanitize and validate input
-        $display_name = sanitize_text_field($_POST['display_name']);
-        $phone = sanitize_text_field($_POST['phone']);
-        $bio = sanitize_textarea_field($_POST['bio']);
+        $display_name = isset($_POST['display_name']) ? sanitize_text_field($_POST['display_name']) : '';
+        $phone = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
+        $bio = isset($_POST['bio']) ? sanitize_textarea_field($_POST['bio']) : '';
 
         if (empty($display_name)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('RFM User Dashboard: Display name is empty');
+            }
             wp_send_json_error(array('message' => __('Visningsnavn er påkrævet.', 'rigtig-for-mig')));
         }
 
         // Update WordPress user
-        wp_update_user(array(
+        $update_result = wp_update_user(array(
             'ID' => $user_id,
             'display_name' => $display_name
         ));
+
+        if (is_wp_error($update_result)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('RFM User Dashboard: wp_update_user failed - ' . $update_result->get_error_message());
+            }
+            wp_send_json_error(array(
+                'message' => __('Kunne ikke opdatere profil.', 'rigtig-for-mig'),
+                'debug' => defined('WP_DEBUG') && WP_DEBUG ? $update_result->get_error_message() : null
+            ));
+        }
 
         // Update user meta
         update_user_meta($user_id, '_rfm_phone', $phone);
@@ -221,8 +290,17 @@ class RFM_User_Dashboard {
         // Update last login timestamp
         update_user_meta($user_id, '_rfm_last_login', current_time('mysql'));
 
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('RFM User Dashboard: Profile updated successfully for user ' . $user_id);
+        }
+
         wp_send_json_success(array(
-            'message' => __('✅ Din profil er opdateret!', 'rigtig-for-mig')
+            'message' => __('✅ Din profil er opdateret!', 'rigtig-for-mig'),
+            'debug' => defined('WP_DEBUG') && WP_DEBUG ? array(
+                'user_id' => $user_id,
+                'display_name' => $display_name,
+                'timestamp' => current_time('mysql')
+            ) : null
         ));
     }
 
@@ -234,9 +312,35 @@ class RFM_User_Dashboard {
      * @since 3.7.0
      */
     public function handle_logout() {
-        check_ajax_referer('rfm_user_dashboard', 'rfm_user_nonce');
+        // COMPREHENSIVE ERROR LOGGING
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('RFM User Dashboard: Logout request received');
+            error_log('RFM User Dashboard: User ID = ' . get_current_user_id());
+        }
+
+        // Send no-cache headers for AJAX
+        nocache_headers();
+        header('Content-Type: application/json; charset=utf-8');
+
+        // Verify nonce
+        try {
+            check_ajax_referer('rfm_user_dashboard', 'rfm_user_nonce');
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('RFM User Dashboard: Logout nonce verification FAILED - ' . $e->getMessage());
+            }
+            wp_send_json_error(array(
+                'message' => __('Sikkerhedstjek fejlede.', 'rigtig-for-mig'),
+                'redirect' => home_url(),
+                'debug' => defined('WP_DEBUG') && WP_DEBUG ? 'Nonce verification failed' : null
+            ), 403);
+        }
 
         wp_logout();
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('RFM User Dashboard: User logged out successfully');
+        }
 
         wp_send_json_success(array(
             'message' => __('Du er nu logget ud', 'rigtig-for-mig'),
