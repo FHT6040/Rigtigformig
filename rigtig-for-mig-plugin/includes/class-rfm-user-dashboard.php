@@ -2,9 +2,12 @@
 /**
  * User Dashboard Management
  *
- * v3.7.0 - Complete clean rebuild following Expert Dashboard pattern
+ * v3.7.2 - LiteSpeed Cache compatibility improvements
+ * - Added LiteSpeed-specific no-cache headers
+ * - Enhanced cache-busting with user ID and timestamp
+ * - Centralized cache prevention for AJAX handlers
  *
- * Minimal, focused implementation:
+ * v3.7.0 - Complete clean rebuild following Expert Dashboard pattern
  * - Profile updates only (name, phone, bio)
  * - Clean AJAX handler with proper nonce verification
  * - Follows WordPress best practices
@@ -42,6 +45,40 @@ class RFM_User_Dashboard {
     }
 
     /**
+     * Send LiteSpeed-specific no-cache headers for AJAX responses
+     *
+     * This prevents LiteSpeed Cache from caching AJAX responses even when
+     * standard no-cache headers are present.
+     *
+     * @since 3.7.2
+     */
+    private function send_litespeed_nocache_headers() {
+        // Prevent headers already sent errors
+        if (headers_sent()) {
+            return;
+        }
+
+        // Standard WordPress no-cache
+        nocache_headers();
+
+        // LiteSpeed-specific cache control headers
+        header('X-LiteSpeed-Cache-Control: no-cache');
+        header('X-LiteSpeed-Tag: rfm-ajax,rfm-no-cache');
+        header('X-LiteSpeed-Vary: cookie');
+
+        // Comprehensive cache prevention
+        header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0, private');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        header('Content-Type: application/json; charset=utf-8');
+
+        // Vary header for logged-in users (prevents serving cached responses)
+        if (is_user_logged_in()) {
+            header('Vary: Cookie');
+        }
+    }
+
+    /**
      * Enqueue dashboard scripts and styles
      */
     public function enqueue_scripts() {
@@ -50,28 +87,34 @@ class RFM_User_Dashboard {
             return;
         }
 
-        // AGGRESSIVE CACHE BUSTING: Use version + timestamp
-        // This ensures LiteSpeed Cache serves the correct file
-        $script_version = RFM_VERSION . '.' . filemtime(RFM_PLUGIN_DIR . 'assets/js/user-dashboard.js');
+        // ENHANCED CACHE BUSTING: Version + timestamp + user ID
+        // This ensures LiteSpeed Cache serves the correct file per user
+        $script_path = RFM_PLUGIN_DIR . 'assets/js/user-dashboard.js';
+        $file_time = file_exists($script_path) ? filemtime($script_path) : time();
+        $user_id = is_user_logged_in() ? get_current_user_id() : '0';
+        $script_version = RFM_VERSION . '.' . $file_time . '.' . $user_id;
 
         // Enqueue dashboard script globally on all frontend pages
-        // This matches the approach used by Expert Dashboard
         wp_enqueue_script(
             'rfm-user-dashboard',
             RFM_PLUGIN_URL . 'assets/js/user-dashboard.js',
             array('jquery'),
-            $script_version,  // Cache-busting version
+            $script_version,  // Enhanced cache-busting version
             true
         );
 
         // Generate fresh nonce on every page load
         $nonce = wp_create_nonce('rfm_user_dashboard');
 
+        // Additional cache-buster for AJAX requests
+        $cache_buster = wp_create_nonce('rfm_script_' . $file_time);
+
         // Localize script with translations and data
-        // Same pattern as Expert Dashboard
         wp_localize_script('rfm-user-dashboard', 'rfmUserDashboard', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => $nonce,  // Fresh nonce
+            'cache_buster' => $cache_buster,  // NEW: Cache-buster for AJAX requests
+            'timestamp' => time(),  // NEW: Current timestamp
             'debug' => defined('WP_DEBUG') && WP_DEBUG,
             'version' => RFM_VERSION,
             'strings' => array(
@@ -88,16 +131,24 @@ class RFM_User_Dashboard {
 
     /**
      * Add no-cache headers to prevent LiteSpeed from caching pages with the dashboard
+     *
+     * @since 3.7.2 - Added LiteSpeed-specific meta tags
      */
     public function add_nocache_headers() {
         if (!is_user_logged_in()) {
             return;
         }
 
-        echo "<!-- RFM User Dashboard v" . RFM_VERSION . " - Cache Bypass Active -->\n";
-        echo '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />' . "\n";
+        echo "<!-- RFM User Dashboard v" . RFM_VERSION . " - Cache Bypass Active (LiteSpeed Compatible) -->\n";
+
+        // Standard no-cache meta tags
+        echo '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, private" />' . "\n";
         echo '<meta http-equiv="Pragma" content="no-cache" />' . "\n";
         echo '<meta http-equiv="Expires" content="0" />' . "\n";
+
+        // LiteSpeed-specific meta tags
+        echo '<meta http-equiv="X-LiteSpeed-Cache-Control" content="no-cache" />' . "\n";
+        echo '<meta http-equiv="X-LiteSpeed-Vary" content="cookie" />' . "\n";
     }
 
     /**
@@ -215,9 +266,13 @@ class RFM_User_Dashboard {
      *
      * Security: Verifies nonce and user login status.
      *
+     * @since 3.7.2 - Added LiteSpeed-specific no-cache headers
      * @since 3.7.0
      */
     public function handle_profile_update() {
+        // Send LiteSpeed-specific no-cache headers FIRST
+        $this->send_litespeed_nocache_headers();
+
         // COMPREHENSIVE ERROR LOGGING
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('RFM User Dashboard: Profile update request received');
@@ -225,10 +280,6 @@ class RFM_User_Dashboard {
             error_log('RFM User Dashboard: User logged in = ' . (is_user_logged_in() ? 'yes' : 'no'));
             error_log('RFM User Dashboard: User ID = ' . get_current_user_id());
         }
-
-        // Send no-cache headers for AJAX
-        nocache_headers();
-        header('Content-Type: application/json; charset=utf-8');
 
         // Verify nonce
         try {
@@ -309,18 +360,18 @@ class RFM_User_Dashboard {
      *
      * Processes AJAX logout requests.
      *
+     * @since 3.7.2 - Added LiteSpeed-specific no-cache headers
      * @since 3.7.0
      */
     public function handle_logout() {
+        // Send LiteSpeed-specific no-cache headers FIRST
+        $this->send_litespeed_nocache_headers();
+
         // COMPREHENSIVE ERROR LOGGING
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('RFM User Dashboard: Logout request received');
             error_log('RFM User Dashboard: User ID = ' . get_current_user_id());
         }
-
-        // Send no-cache headers for AJAX
-        nocache_headers();
-        header('Content-Type: application/json; charset=utf-8');
 
         // Verify nonce
         try {

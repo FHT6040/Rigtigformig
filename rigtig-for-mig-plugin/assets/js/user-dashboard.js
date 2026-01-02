@@ -1,9 +1,11 @@
 /**
  * User Dashboard JavaScript
  *
- * v3.7.0 - Complete clean rebuild following Expert Dashboard pattern
+ * v3.7.2 - LiteSpeed Cache compatibility improvements
+ * - Added cache-buster and timestamp to AJAX requests
+ * - Added Cache-Control headers to AJAX calls
  *
- * Minimal, focused implementation:
+ * v3.7.0 - Complete clean rebuild following Expert Dashboard pattern
  * - Profile form submission
  * - Logout functionality
  * - Clean error handling
@@ -49,13 +51,15 @@
             // Use nonce from localized data (fresh on every page load)
             var nonce = rfmUserDashboard.nonce || $form.find('[name="rfm_user_nonce"]').val();
 
-            // Collect form data
+            // Collect form data with cache-busting parameters
             var formData = {
                 action: 'rfm_update_user_profile',
                 rfm_user_nonce: nonce,
                 display_name: $('#user_display_name').val(),
                 phone: $('#user_phone').val(),
-                bio: $('#user_bio').val()
+                bio: $('#user_bio').val(),
+                _cache_buster: rfmUserDashboard.cache_buster || Date.now(),
+                _timestamp: rfmUserDashboard.timestamp || Date.now()
             };
 
             // Validate display name
@@ -77,6 +81,10 @@
                 data: formData,
                 cache: false,  // Prevent caching
                 dataType: 'json',  // Expect JSON response
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 success: function(response) {
                     if (rfmUserDashboard.debug) {
                         console.log('RFM User Dashboard: AJAX Success Response:', response);
@@ -167,10 +175,16 @@
                 type: 'POST',
                 data: {
                     action: 'rfm_user_logout',
-                    rfm_user_nonce: nonce
+                    rfm_user_nonce: nonce,
+                    _cache_buster: rfmUserDashboard.cache_buster || Date.now(),
+                    _timestamp: rfmUserDashboard.timestamp || Date.now()
                 },
                 cache: false,  // Prevent caching
                 dataType: 'json',  // Expect JSON response
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 success: function(response) {
                     if (rfmUserDashboard.debug) {
                         console.log('RFM User Dashboard: Logout successful', response);
