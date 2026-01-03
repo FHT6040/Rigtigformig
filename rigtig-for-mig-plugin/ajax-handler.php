@@ -96,6 +96,18 @@ switch ($action) {
         rfm_direct_user_logout();
         break;
 
+    case 'rfm_save_general_profile':
+        rfm_direct_save_general_profile();
+        break;
+
+    case 'rfm_save_category_profile':
+        rfm_direct_save_category_profile();
+        break;
+
+    case 'rfm_expert_logout':
+        rfm_direct_expert_logout();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -266,6 +278,232 @@ function rfm_direct_user_logout() {
     $nonce = isset($_POST['rfm_user_nonce']) ? sanitize_text_field($_POST['rfm_user_nonce']) : '';
 
     if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_user_dashboard')) {
+        wp_send_json_error(array(
+            'message' => 'Sikkerhedstjek fejlede.',
+            'redirect' => home_url()
+        ), 403);
+        exit;
+    }
+
+    wp_logout();
+
+    wp_send_json_success(array(
+        'message' => 'Du er nu logget ud',
+        'redirect' => home_url()
+    ));
+    exit;
+}
+
+/**
+ * Handle expert general profile save
+ *
+ * @since 3.8.2
+ */
+function rfm_direct_save_general_profile() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede. Genindlæs siden og prøv igen.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = intval($_POST['expert_id']);
+
+    // Verify ownership
+    $post = get_post($expert_id);
+    if (!$post || $post->post_author != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    // Get plan for validation
+    $plan = RFM_Subscriptions::get_instance()->get_expert_plan($expert_id);
+
+    // Update post title (name)
+    wp_update_post(array(
+        'ID' => $expert_id,
+        'post_title' => sanitize_text_field($_POST['name'])
+    ));
+
+    // Update basic meta
+    update_post_meta($expert_id, '_rfm_email', sanitize_email($_POST['email']));
+    update_post_meta($expert_id, '_rfm_phone', sanitize_text_field($_POST['phone'] ?? ''));
+
+    // Update fields based on plan
+    if ($plan === 'standard' || $plan === 'premium') {
+        update_post_meta($expert_id, '_rfm_website', esc_url_raw($_POST['website'] ?? ''));
+        update_post_meta($expert_id, '_rfm_company_name', sanitize_text_field($_POST['company_name'] ?? ''));
+    }
+
+    // Update languages
+    if (isset($_POST['languages'])) {
+        $languages = array_map('sanitize_text_field', $_POST['languages']);
+        update_post_meta($expert_id, '_rfm_languages', $languages);
+    } else {
+        update_post_meta($expert_id, '_rfm_languages', array());
+    }
+
+    // Update categories with limit validation
+    $max_categories = array(
+        'free' => 1,
+        'standard' => 2,
+        'premium' => 99
+    );
+    $allowed_cats = $max_categories[$plan] ?? 1;
+
+    if (isset($_POST['categories'])) {
+        $categories = array_map('intval', $_POST['categories']);
+        $categories = array_slice($categories, 0, $allowed_cats);
+        wp_set_object_terms($expert_id, $categories, 'rfm_category');
+
+        error_log("RFM: Saved categories for expert $expert_id: " . implode(', ', $categories));
+    }
+
+    wp_send_json_success(array(
+        'message' => '✅ Generelle oplysninger gemt!'
+    ));
+    exit;
+}
+
+/**
+ * Handle expert category profile save
+ *
+ * @since 3.8.2
+ */
+function rfm_direct_save_category_profile() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede. Genindlæs siden og prøv igen.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = intval($_POST['expert_id']);
+    $category_id = intval($_POST['category_id']);
+
+    // Verify ownership
+    $post = get_post($expert_id);
+    if (!$post || $post->post_author != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    // Verify expert has this category
+    $expert_categories = wp_get_object_terms($expert_id, 'rfm_category', array('fields' => 'ids'));
+    if (!in_array($category_id, $expert_categories)) {
+        wp_send_json_error(array('message' => 'Du har ikke denne kategori.'), 400);
+        exit;
+    }
+
+    // Get plan for validation
+    $plan = RFM_Subscriptions::get_instance()->get_expert_plan($expert_id);
+
+    // Define limits
+    $max_educations = array(
+        'free' => 1,
+        'standard' => 3,
+        'premium' => 7
+    );
+    $max_specs = array(
+        'free' => 1,
+        'standard' => 3,
+        'premium' => 7
+    );
+
+    $allowed_educations = $max_educations[$plan] ?? 1;
+    $allowed_specs = $max_specs[$plan] ?? 1;
+
+    // Prepare educations data
+    $educations = isset($_POST['educations']) ? $_POST['educations'] : array();
+    $sanitized_educations = array();
+
+    if (is_array($educations)) {
+        foreach ($educations as $edu) {
+            if (empty($edu['name'])) {
+                continue;
+            }
+
+            $sanitized_educations[] = array(
+                'name' => sanitize_text_field($edu['name']),
+                'institution' => sanitize_text_field($edu['institution'] ?? ''),
+                'year_start' => sanitize_text_field($edu['year_start'] ?? ''),
+                'year_end' => sanitize_text_field($edu['year_end'] ?? ''),
+                'experience_start_year' => absint($edu['experience_start_year'] ?? 0),
+                'description' => sanitize_textarea_field($edu['description'] ?? ''),
+                'image_id' => absint($edu['image_id'] ?? 0)
+            );
+        }
+    }
+
+    $sanitized_educations = array_slice($sanitized_educations, 0, $allowed_educations);
+
+    // Prepare specializations
+    $specializations = isset($_POST['specializations']) ? array_map('intval', $_POST['specializations']) : array();
+    $specializations = array_slice($specializations, 0, $allowed_specs);
+
+    // Prepare category profile data
+    $profile = array(
+        'about_me' => sanitize_textarea_field($_POST['about_me'] ?? ''),
+        'years_experience' => absint($_POST['years_experience'] ?? 0),
+        'experience_start_year' => absint($_POST['experience_start_year'] ?? 0),
+        'educations' => $sanitized_educations,
+        'specializations' => $specializations
+    );
+
+    // Save category profile
+    $meta_key = '_rfm_category_profile_' . $category_id;
+    update_post_meta($expert_id, $meta_key, $profile);
+
+    // Update global specializations taxonomy
+    $all_specs = array();
+    foreach ($expert_categories as $cat_id) {
+        $cat_profile = get_post_meta($expert_id, '_rfm_category_profile_' . $cat_id, true);
+        if (!empty($cat_profile['specializations'])) {
+            $all_specs = array_merge($all_specs, $cat_profile['specializations']);
+        }
+    }
+    $all_specs = array_unique($all_specs);
+    wp_set_object_terms($expert_id, $all_specs, 'rfm_specialization');
+
+    $category = get_term($category_id, 'rfm_category');
+    $category_name = $category ? $category->name : '';
+
+    wp_send_json_success(array(
+        'message' => sprintf('✅ Profil for "%s" gemt!', $category_name)
+    ));
+    exit;
+}
+
+/**
+ * Handle expert logout
+ *
+ * @since 3.8.2
+ */
+function rfm_direct_expert_logout() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_logout')) {
         wp_send_json_error(array(
             'message' => 'Sikkerhedstjek fejlede.',
             'redirect' => home_url()
