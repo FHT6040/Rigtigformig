@@ -507,7 +507,7 @@ function rfm_direct_expert_logout() {
     // Verify nonce
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
 
-    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_logout')) {
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_logout')) {
         wp_send_json_error(array(
             'message' => 'Sikkerhedstjek fejlede.',
             'redirect' => home_url()
