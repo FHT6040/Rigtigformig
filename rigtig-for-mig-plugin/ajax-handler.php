@@ -528,109 +528,109 @@ function rfm_direct_expert_logout() {
     exit;
 }
 
+
 /**
  * Handle unified login (for both users and experts)
  *
- * @since 3.8.3
+ * @since 3.8.4
  */
 function rfm_direct_unified_login() {
     ob_end_clean();
 
     // Verify nonce
-    $nonce = isset($_POST["nonce"]) ? sanitize_text_field($_POST["nonce"]) : "";
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
 
-    if (empty($nonce) || \!wp_verify_nonce($nonce, "rfm_nonce")) {
-        wp_send_json_error(array("message" => "Sikkerhedstjek fejlede."), 403);
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
         exit;
     }
 
-    $identifier = isset($_POST["identifier"]) ? sanitize_text_field($_POST["identifier"]) : "";
-    $password = isset($_POST["password"]) ? $_POST["password"] : "";
-    $remember = isset($_POST["remember"]) ? true : false;
+    $identifier = isset($_POST['identifier']) ? sanitize_text_field($_POST['identifier']) : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+    $remember = isset($_POST['remember']) ? true : false;
 
     // Validate
     if (empty($identifier) || empty($password)) {
-        wp_send_json_error(array("message" => "Alle felter er påkrævede"));
+        wp_send_json_error(array('message' => 'Alle felter er påkrævede'));
         exit;
     }
 
     // Determine if identifier is email or username
     $user = null;
     if (is_email($identifier)) {
-        $user = get_user_by("email", $identifier);
+        $user = get_user_by('email', $identifier);
     } else {
-        $user = get_user_by("login", $identifier);
+        $user = get_user_by('login', $identifier);
     }
 
-    if (\!$user) {
-        wp_send_json_error(array("message" => "Ugyldigt brugernavn/e-mail eller adgangskode"));
+    if (!$user) {
+        wp_send_json_error(array('message' => 'Ugyldigt brugernavn/e-mail eller adgangskode'));
         exit;
     }
 
     // Check password
-    if (\!wp_check_password($password, $user->user_pass, $user->ID)) {
-        wp_send_json_error(array("message" => "Ugyldigt brugernavn/e-mail eller adgangskode"));
+    if (!wp_check_password($password, $user->user_pass, $user->ID)) {
+        wp_send_json_error(array('message' => 'Ugyldigt brugernavn/e-mail eller adgangskode'));
         exit;
     }
 
     // Check if email is verified
     $verified = false;
 
-    if (in_array("rfm_expert_user", $user->roles)) {
+    if (in_array('rfm_expert_user', $user->roles)) {
         // For experts: Check if they have an expert post and if it is verified
         $expert_posts = get_posts(array(
-            "post_type" => "rfm_expert",
-            "author" => $user->ID,
-            "posts_per_page" => 1,
-            "post_status" => "publish"
+            'post_type' => 'rfm_expert',
+            'author' => $user->ID,
+            'posts_per_page' => 1,
+            'post_status' => 'publish'
         ));
 
-        if (\!empty($expert_posts)) {
-            $verified = (bool) get_post_meta($expert_posts[0]->ID, "_rfm_email_verified", true);
+        if (!empty($expert_posts)) {
+            $verified = (bool) get_post_meta($expert_posts[0]->ID, '_rfm_email_verified', true);
         }
     } else {
         // For regular users: Check using unified migration helper
-        if (class_exists("RFM_Migration")) {
+        if (class_exists('RFM_Migration')) {
             $verified = RFM_Migration::is_user_verified($user->ID);
         } else {
             // Fallback if class not available
-            $verified = get_user_meta($user->ID, "_rfm_email_verified", true);
+            $verified = get_user_meta($user->ID, '_rfm_email_verified', true);
         }
     }
 
-    if (\!$verified) {
-        wp_send_json_error(array("message" => "Din e-mail er ikke bekræftet. Tjek din indbakke."));
+    if (!$verified) {
+        wp_send_json_error(array('message' => 'Din e-mail er ikke bekræftet. Tjek din indbakke.'));
         exit;
     }
 
     // Log user in
     wp_set_current_user($user->ID);
     wp_set_auth_cookie($user->ID, $remember);
-    do_action("wp_login", $user->user_login, $user);
+    do_action('wp_login', $user->user_login, $user);
 
     // Update last login
-    if (in_array("rfm_user", $user->roles)) {
-        if (class_exists("RFM_Migration")) {
+    if (in_array('rfm_user', $user->roles)) {
+        if (class_exists('RFM_Migration')) {
             RFM_Migration::update_last_login($user->ID);
         } else {
-            update_user_meta($user->ID, "_rfm_last_login", current_time("mysql"));
+            update_user_meta($user->ID, '_rfm_last_login', current_time('mysql'));
         }
     }
 
     // Determine redirect based on role
     $redirect = home_url();
-    if (in_array("rfm_expert_user", $user->roles)) {
-        $redirect = home_url("/ekspert-dashboard");
-    } elseif (in_array("rfm_user", $user->roles)) {
-        $redirect = home_url("/bruger-dashboard");
+    if (in_array('rfm_expert_user', $user->roles)) {
+        $redirect = home_url('/ekspert-dashboard');
+    } elseif (in_array('rfm_user', $user->roles)) {
+        $redirect = home_url('/bruger-dashboard');
     }
 
     error_log("RFM: User {$user->ID} logged in successfully. Redirect: {$redirect}");
 
     wp_send_json_success(array(
-        "message" => "Du er nu logget ind\!",
-        "redirect" => $redirect
+        'message' => 'Du er nu logget ind!',
+        'redirect' => $redirect
     ));
     exit;
 }
-
