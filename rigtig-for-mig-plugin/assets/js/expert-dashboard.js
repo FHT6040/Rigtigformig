@@ -151,7 +151,6 @@
                 console.log('RFM: Preventing check - would exceed limit');
                 $this.prop('checked', false);
                 $('#rfm-category-limit-notice').show();
-                return false;
             }
 
             // Update limit state
