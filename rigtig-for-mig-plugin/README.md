@@ -143,6 +143,25 @@ $uddannelser = get_user_meta($expert_id, 'rfm_profile_uddannelser', true);
 - ✨ Frontend profil editor med AJAX
 - 🔒 Låste felter med upgrade-prompts
 
+## 🛠️ Development Guidelines
+
+### AJAX Implementation - VIGTIGT! 🚨
+
+**ALLE AJAX handlers SKAL bruge `ajax-handler.php` - IKKE WordPress `admin-ajax.php`**
+
+📖 **Se `AJAX-GUIDELINES.md` for detaljerede instruktioner**
+
+Hurtig reference:
+1. Tilføj case i `ajax-handler.php` switch statement
+2. Opret `rfm_direct_*` funktion i samme fil
+3. I JavaScript: brug `rfmData.ajaxurl` (peger automatisk på ajax-handler.php)
+4. ❌ UNDGÅ `add_action('wp_ajax_*')` - brug ajax-handler.php i stedet
+
+### Relaterede Developer-Filer:
+- `AJAX-GUIDELINES.md` - Komplet guide til AJAX implementation
+- `AJAX-FIX-SUMMARY.md` - Historik om ajax-handler.php migration
+- `CACHE-FIX-INSTRUCTIONS.md` - LiteSpeed Cache setup
+
 ## 📄 Licens
 
 GPL v2 or later

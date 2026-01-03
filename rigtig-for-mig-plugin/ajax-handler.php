@@ -1,11 +1,15 @@
 <?php
 /**
- * Direct AJAX Handler for RFM User Dashboard
+ * Direct AJAX Handler for RFM - ALL AJAX Requests
  *
- * This bypasses admin-ajax.php to avoid redirect issues
+ * IMPORTANT: ALL new AJAX handlers MUST be added here!
+ * See AJAX-GUIDELINES.md for implementation instructions.
+ *
+ * This bypasses admin-ajax.php to avoid LiteSpeed Cache redirect issues
  *
  * @since 3.7.3
  * @updated 3.7.5 - Added avatar upload support
+ * @updated 3.8.2 - Added expert dashboard handlers (save profile, categories, logout)
  */
 
 // Find wp-load.php without using relative paths (open_basedir safe)
