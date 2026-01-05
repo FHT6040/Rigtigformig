@@ -151,14 +151,33 @@
                 console.log('RFM: Preventing check - would exceed limit');
                 $this.prop('checked', false);
                 $('#rfm-category-limit-notice').show();
+                return;
             }
 
-            // Update limit state
-            updateCategoryLimit();
+            // Update UI based on limit
+            if (checkedCount >= maxCats) {
+                $checkboxes.not(':checked').prop('disabled', true);
+                $('#rfm-category-limit-notice').show();
+                console.log('RFM: Category limit reached. Disabling unchecked boxes.');
+            } else {
+                $checkboxes.prop('disabled', false);
+                $('#rfm-category-limit-notice').hide();
+                console.log('RFM: Category limit not reached. Enabling all boxes.');
+            }
         });
 
-        // Initial update
-        updateCategoryLimit();
+        // Initial update on page load
+        (function() {
+            var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
+            var checkedCount = $checkboxes.filter(':checked').length;
+
+            console.log('RFM: Initial category count:', checkedCount, 'Max:', maxCats);
+
+            if (checkedCount >= maxCats) {
+                $checkboxes.not(':checked').prop('disabled', true);
+                $('#rfm-category-limit-notice').show();
+            }
+        })();
 
         // ========================================
         // SPECIALIZATION LIMITS PER CATEGORY
