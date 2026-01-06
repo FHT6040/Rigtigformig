@@ -121,45 +121,9 @@
 
         console.log('RFM Expert Dashboard: Category limit initialized. Max categories:', maxCats);
 
-        function updateCategoryLimit() {
-            var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
-            var checkedCount = $checkboxes.filter(':checked').length;
-
-            console.log('RFM: Updating category limit. Checked:', checkedCount, 'Max:', maxCats);
-
-            if (checkedCount >= maxCats) {
-                $checkboxes.not(':checked').prop('disabled', true);
-                $('#rfm-category-limit-notice').show();
-                console.log('RFM: Category limit reached. Disabling unchecked boxes.');
-            } else {
-                $checkboxes.prop('disabled', false);
-                $('#rfm-category-limit-notice').hide();
-                console.log('RFM: Category limit not reached. Enabling all boxes.');
-            }
-        }
-
-        // Update on category change - simple approach that works with browser behavior
-        $catCheckboxes.on('change', '.rfm-category-checkbox', function() {
-            var $changedCheckbox = $(this);
-            var $allCheckboxes = $catCheckboxes.find('.rfm-category-checkbox');
-            var checkedCount = $allCheckboxes.filter(':checked').length;
-
-            console.log('RFM: Category changed. Total checked:', checkedCount, 'Max:', maxCats);
-
-            // Update UI - but NEVER touch the checkbox that just changed
-            if (checkedCount >= maxCats) {
-                $allCheckboxes.not(':checked').not($changedCheckbox).prop('disabled', true);
-                $('#rfm-category-limit-notice').show();
-                console.log('RFM: Limit reached - disabled unchecked boxes (except the one clicked)');
-            } else {
-                $allCheckboxes.not($changedCheckbox).prop('disabled', false);
-                $('#rfm-category-limit-notice').hide();
-                console.log('RFM: Under limit - enabled all boxes (except the one clicked)');
-            }
-        });
-
-        // Initial update on page load
-        updateCategoryLimit();
+        // REMOVED: All client-side checkbox manipulation
+        // Checkboxes work naturally like language checkboxes
+        // Server-side validation in ajax-handler.php enforces the limit when saving
 
         // ========================================
         // SPECIALIZATION LIMITS PER CATEGORY

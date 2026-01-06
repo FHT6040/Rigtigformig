@@ -368,16 +368,30 @@ function rfm_direct_save_general_profile() {
     );
     $allowed_cats = $max_categories[$plan] ?? 1;
 
+    $success_message = '✅ Generelle oplysninger gemt!';
+
     if (isset($_POST['categories'])) {
-        $categories = array_map('intval', $_POST['categories']);
-        $categories = array_slice($categories, 0, $allowed_cats);
+        $submitted_categories = array_map('intval', $_POST['categories']);
+        $categories_count = count($submitted_categories);
+
+        // Trim to allowed limit
+        $categories = array_slice($submitted_categories, 0, $allowed_cats);
         wp_set_object_terms($expert_id, $categories, 'rfm_category');
 
         error_log("RFM: Saved categories for expert $expert_id: " . implode(', ', $categories));
+
+        // Inform user if some categories were removed due to limit
+        if ($categories_count > $allowed_cats) {
+            $success_message = sprintf(
+                '✅ Oplysninger gemt! Note: Kun %d kategorier blev gemt (dit abonnement tillader %d).',
+                count($categories),
+                $allowed_cats
+            );
+        }
     }
 
     wp_send_json_success(array(
-        'message' => '✅ Generelle oplysninger gemt!'
+        'message' => $success_message
     ));
     exit;
 }
