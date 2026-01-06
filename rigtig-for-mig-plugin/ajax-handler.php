@@ -378,9 +378,26 @@ function rfm_direct_save_general_profile() {
         $submitted_categories = array_map('intval', $_POST['categories']);
         $categories_count = count($submitted_categories);
 
+        error_log("RFM DEBUG: Submitted categories: " . implode(', ', $submitted_categories));
+        error_log("RFM DEBUG: Plan: $plan, Allowed: $allowed_cats");
+
         // Trim to allowed limit
         $categories = array_slice($submitted_categories, 0, $allowed_cats);
-        wp_set_object_terms($expert_id, $categories, 'rfm_category');
+
+        error_log("RFM DEBUG: Categories after slice: " . implode(', ', $categories));
+
+        // Set terms
+        $result = wp_set_object_terms($expert_id, $categories, 'rfm_category');
+
+        if (is_wp_error($result)) {
+            error_log("RFM ERROR: Failed to set terms: " . $result->get_error_message());
+        } else {
+            error_log("RFM SUCCESS: Set terms result: " . print_r($result, true));
+        }
+
+        // Verify what was actually saved
+        $saved_terms = wp_get_object_terms($expert_id, 'rfm_category', array('fields' => 'ids'));
+        error_log("RFM VERIFY: Saved term IDs in DB: " . implode(', ', $saved_terms));
 
         error_log("RFM: Saved categories for expert $expert_id: " . implode(', ', $categories));
 
