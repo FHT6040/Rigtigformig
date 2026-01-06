@@ -52,7 +52,7 @@
             $message.html('');
 
             $.ajax({
-                url: rfmData.ajaxurl,
+                url: rfmDashboard.ajaxurl,
                 type: 'POST',
                 data: $form.serialize() + '&action=rfm_save_general_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
                 success: function(response) {
@@ -91,7 +91,7 @@
             $message.html('');
 
             $.ajax({
-                url: rfmData.ajaxurl,
+                url: rfmDashboard.ajaxurl,
                 type: 'POST',
                 data: $form.serialize() + '&action=rfm_save_category_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
                 success: function(response) {
@@ -120,6 +120,7 @@
         var maxCats = parseInt($catCheckboxes.data('max')) || 1;
 
         console.log('RFM Expert Dashboard: Category limit initialized. Max categories:', maxCats);
+        console.log('RFM Expert Dashboard: AJAX URL:', rfmDashboard.ajaxurl);
 
         // REMOVED: All client-side checkbox manipulation
         // Checkboxes work naturally like language checkboxes
@@ -204,7 +205,7 @@
             e.preventDefault();
 
             $.ajax({
-                url: rfmData.ajaxurl,
+                url: rfmDashboard.ajaxurl,
                 type: 'POST',
                 data: {
                     action: 'rfm_expert_logout',

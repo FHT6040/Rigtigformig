@@ -60,6 +60,7 @@ class RFM_Expert_Dashboard {
 
         // Localize script with translations and data
         wp_localize_script('rfm-expert-dashboard', 'rfmDashboard', array(
+            'ajaxurl' => RFM_PLUGIN_URL . 'ajax-handler.php',  // Direct AJAX handler
             'strings' => array(
                 'savingText' => __('Gemmer...', 'rigtig-for-mig'),
                 'submitGeneralText' => __('Gem generelle oplysninger', 'rigtig-for-mig'),
