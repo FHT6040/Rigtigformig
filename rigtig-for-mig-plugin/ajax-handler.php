@@ -310,10 +310,14 @@ function rfm_direct_user_logout() {
 function rfm_direct_save_general_profile() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both 'nonce' and 'rfm_tabbed_nonce' field names
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce)) {
+        $nonce = isset($_POST['rfm_tabbed_nonce']) ? sanitize_text_field($_POST['rfm_tabbed_nonce']) : '';
+    }
 
     if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        error_log('RFM: Nonce verification failed. Nonce: ' . $nonce . ', POST keys: ' . implode(', ', array_keys($_POST)));
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede. Genindlæs siden og prøv igen.'), 403);
         exit;
     }
@@ -404,10 +408,14 @@ function rfm_direct_save_general_profile() {
 function rfm_direct_save_category_profile() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both 'nonce' and 'rfm_tabbed_nonce' field names
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce)) {
+        $nonce = isset($_POST['rfm_tabbed_nonce']) ? sanitize_text_field($_POST['rfm_tabbed_nonce']) : '';
+    }
 
     if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        error_log('RFM: Category profile - Nonce verification failed');
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede. Genindlæs siden og prøv igen.'), 403);
         exit;
     }
