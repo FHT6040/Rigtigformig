@@ -140,6 +140,47 @@
         // Server-side validation enforces limits when form is submitted
         console.log('Category checkboxes: Working naturally, no client-side enforcement');
 
+        // CRITICAL: Remove any event handlers from other scripts (public.js, etc.)
+        // Use setTimeout to ensure this runs AFTER other scripts have initialized
+        setTimeout(function() {
+            var $categoryContainer = $('#rfm-tabbed-categories');
+            if ($categoryContainer.length) {
+                var $categoryCheckboxes = $categoryContainer.find('.rfm-category-checkbox');
+
+                console.log('Cleaning up category checkboxes...');
+                console.log('Found ' + $categoryCheckboxes.length + ' category checkboxes');
+
+                // Unbind ALL event handlers attached by other scripts
+                $categoryCheckboxes.off('change');
+                $categoryContainer.off('change', '.rfm-category-checkbox');
+
+                // Also remove delegated event handlers from document and body
+                $(document).off('change', '.rfm-category-checkbox');
+                $('body').off('change', '.rfm-category-checkbox');
+
+                // Re-enable all checkboxes (in case they were disabled by other scripts)
+                $categoryCheckboxes.prop('disabled', false);
+
+                // Hide any limit notices
+                $('#rfm-category-limit-notice').hide();
+                $('#rfm-category-limit-notice-dashboard').hide();
+                $('.rfm-category-limit-notice').hide();
+
+                console.log('✓ Cleaned up category checkboxes - all event handlers removed');
+                console.log('✓ All checkboxes enabled');
+                console.log('✓ All notices hidden');
+
+                // GUARD: Run cleanup every 500ms to prevent other scripts from taking over
+                setInterval(function() {
+                    // Silently re-enable checkboxes and hide notices
+                    $categoryCheckboxes.prop('disabled', false);
+                    $('#rfm-category-limit-notice').hide();
+                    $('#rfm-category-limit-notice-dashboard').hide();
+                    $('.rfm-category-limit-notice').hide();
+                }, 500);
+            }
+        }, 100); // Wait 100ms for other scripts to initialize
+
         // ========================================
         // SPECIALIZATION LIMITS PER CATEGORY
         // ========================================
