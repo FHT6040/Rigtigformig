@@ -138,54 +138,11 @@
             }
         }
 
-        // Handle checkbox click with validation
-        $catCheckboxes.on('click', '.rfm-category-checkbox', function(e) {
-            var $this = $(this);
-            var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
-            var isCurrentlyChecked = $this.prop('checked');
-            var checkedCount = $checkboxes.filter(':checked').length;
-
-            console.log('RFM: Checkbox clicked. Will be checked:', !isCurrentlyChecked, 'Current total:', checkedCount, 'Max:', maxCats);
-
-            // If trying to check (not uncheck) and would exceed limit, prevent it
-            if (!isCurrentlyChecked && checkedCount >= maxCats) {
-                console.log('RFM: Preventing check - at limit');
-                e.preventDefault();
-                $('#rfm-category-limit-notice').show();
-                return false;
-            }
-
-            // Allow the check/uncheck to proceed
-            // Update UI after a brief delay to let checkbox state settle
-            setTimeout(function() {
-                var newCheckedCount = $checkboxes.filter(':checked').length;
-                console.log('RFM: After click, total checked:', newCheckedCount);
-
-                // Update disabled state of other checkboxes
-                if (newCheckedCount >= maxCats) {
-                    $checkboxes.not(':checked').prop('disabled', true);
-                    $('#rfm-category-limit-notice').show();
-                    console.log('RFM: Limit reached - disabled unchecked boxes');
-                } else {
-                    $checkboxes.prop('disabled', false);
-                    $('#rfm-category-limit-notice').hide();
-                    console.log('RFM: Under limit - all boxes enabled');
-                }
-            }, 10);
-        });
+        // Update on category change - simple approach that works with browser behavior
+        $catCheckboxes.on('change', '.rfm-category-checkbox', updateCategoryLimit);
 
         // Initial update on page load
-        (function() {
-            var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
-            var checkedCount = $checkboxes.filter(':checked').length;
-
-            console.log('RFM: Initial category count:', checkedCount, 'Max:', maxCats);
-
-            if (checkedCount >= maxCats) {
-                $checkboxes.not(':checked').prop('disabled', true);
-                $('#rfm-category-limit-notice').show();
-            }
-        })();
+        updateCategoryLimit();
 
         // ========================================
         // SPECIALIZATION LIMITS PER CATEGORY
