@@ -138,27 +138,31 @@
             }
         }
 
-        // Handle checkbox change with validation
-        $catCheckboxes.on('change', '.rfm-category-checkbox', function(e) {
+        // Handle checkbox click with validation
+        $catCheckboxes.on('click', '.rfm-category-checkbox', function(e) {
             var $this = $(this);
             var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
+            var isCurrentlyChecked = $this.prop('checked');
+            var checkedCount = $checkboxes.filter(':checked').length;
 
-            // Use setTimeout to ensure checkbox state is stable before reading
+            console.log('RFM: Checkbox clicked. Will be checked:', !isCurrentlyChecked, 'Current total:', checkedCount, 'Max:', maxCats);
+
+            // If trying to check (not uncheck) and would exceed limit, prevent it
+            if (!isCurrentlyChecked && checkedCount >= maxCats) {
+                console.log('RFM: Preventing check - at limit');
+                e.preventDefault();
+                $('#rfm-category-limit-notice').show();
+                return false;
+            }
+
+            // Allow the check/uncheck to proceed
+            // Update UI after a brief delay to let checkbox state settle
             setTimeout(function() {
-                var checkedCount = $checkboxes.filter(':checked').length;
+                var newCheckedCount = $checkboxes.filter(':checked').length;
+                console.log('RFM: After click, total checked:', newCheckedCount);
 
-                console.log('RFM: Checkbox changed. Total checked:', checkedCount, 'Max:', maxCats);
-
-                // If user exceeded limit, uncheck the last one
-                if (checkedCount > maxCats) {
-                    console.log('RFM: Limit exceeded! Unchecking...');
-                    $this.prop('checked', false);
-                    $('#rfm-category-limit-notice').show();
-                    checkedCount = $checkboxes.filter(':checked').length;
-                }
-
-                // Update other checkboxes disabled state
-                if (checkedCount >= maxCats) {
+                // Update disabled state of other checkboxes
+                if (newCheckedCount >= maxCats) {
                     $checkboxes.not(':checked').prop('disabled', true);
                     $('#rfm-category-limit-notice').show();
                     console.log('RFM: Limit reached - disabled unchecked boxes');
@@ -167,7 +171,7 @@
                     $('#rfm-category-limit-notice').hide();
                     console.log('RFM: Under limit - all boxes enabled');
                 }
-            }, 0);
+            }, 10);
         });
 
         // Initial update on page load
