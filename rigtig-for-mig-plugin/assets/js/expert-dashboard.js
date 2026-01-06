@@ -154,6 +154,17 @@
                 console.log('Initializing category selection...');
                 console.log('Found ' + $categoryCheckboxes.length + ' checkboxes, limit: ' + maxCategories);
 
+                // DEBUG: Log initial checkbox states as rendered by PHP
+                console.log('=== INITIAL CHECKBOX STATES (from PHP) ===');
+                $categoryCheckboxes.each(function() {
+                    var $cb = $(this);
+                    var id = $cb.val();
+                    var name = $cb.siblings('span').text();
+                    var isChecked = $cb.is(':checked');
+                    var hasCheckedAttr = typeof $cb.attr('checked') !== 'undefined';
+                    console.log('Category ' + id + ' (' + name + '): checked=' + isChecked + ', has checked attr=' + hasCheckedAttr);
+                });
+
                 // Clean up any interfering event handlers from other scripts
                 $categoryCheckboxes.off('change');
                 $categoryContainer.off('change', '.rfm-category-checkbox');
@@ -190,6 +201,19 @@
                 }, 500);
 
                 console.log('✓ Category selection feedback initialized');
+
+                // DEBUG: Log states again after 2 seconds to see if anything changed
+                setTimeout(function() {
+                    console.log('=== CHECKBOX STATES AFTER 2 SECONDS ===');
+                    $categoryCheckboxes.each(function() {
+                        var $cb = $(this);
+                        var id = $cb.val();
+                        var name = $cb.siblings('span').text();
+                        var isChecked = $cb.is(':checked');
+                        var isDisabled = $cb.prop('disabled');
+                        console.log('Category ' + id + ' (' + name + '): checked=' + isChecked + ', disabled=' + isDisabled);
+                    });
+                }, 2000);
             }
         }, 100); // Wait 100ms for other scripts to initialize
 
