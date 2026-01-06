@@ -917,7 +917,8 @@ body.single-rfm_expert .post-thumbnail img {
 .rfm-category-choice.rfm-disabled,
 .rfm-category-choice:has(input:disabled) {
     opacity: 0.5;
-    pointer-events: none;
+    cursor: not-allowed;
+    /* REMOVED pointer-events: none to allow natural checkbox behavior */
 }
 
 .rfm-category-choice input[type="checkbox"]:disabled + strong {
