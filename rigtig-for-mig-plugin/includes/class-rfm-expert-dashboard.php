@@ -332,6 +332,11 @@ class RFM_Expert_Dashboard {
             $expert_categories = array();
         }
 
+        // DEBUG: Log what categories we retrieved for this expert
+        $expert_cat_ids_debug = array_map(function($cat) { return $cat->term_id; }, $expert_categories);
+        error_log("RFM RENDER DEBUG: Expert ID $expert_id - Retrieved categories from DB: " . implode(', ', $expert_cat_ids_debug));
+        error_log("RFM RENDER DEBUG: Total categories found: " . count($expert_categories));
+
         // Get all available categories
         $all_categories = get_terms(array(
             'taxonomy' => 'rfm_category',
@@ -514,15 +519,19 @@ class RFM_Expert_Dashboard {
                                  data-max="<?php echo esc_attr($allowed_categories); ?>">
                                 <?php
                                 $expert_cat_ids = array_map(function($cat) { return $cat->term_id; }, $expert_categories);
+                                error_log("RFM RENDER DEBUG: About to render checkboxes. Expert category IDs: " . implode(', ', $expert_cat_ids));
+
                                 foreach ($all_categories as $category):
                                     $color = RFM_Taxonomies::get_category_color($category->term_id);
+                                    $is_checked = in_array($category->term_id, $expert_cat_ids);
+                                    error_log("RFM RENDER DEBUG: Category {$category->term_id} ({$category->name}) - Should be checked: " . ($is_checked ? 'YES' : 'NO'));
                                 ?>
                                 <label class="rfm-category-choice" style="--cat-color: <?php echo esc_attr($color); ?>;">
                                     <input type="checkbox"
                                            name="categories[]"
                                            value="<?php echo esc_attr($category->term_id); ?>"
                                            class="rfm-category-checkbox"
-                                           <?php checked(in_array($category->term_id, $expert_cat_ids)); ?> />
+                                           <?php checked($is_checked); ?> />
                                     <span><?php echo esc_html($category->name); ?></span>
                                 </label>
                                 <?php endforeach; ?>
