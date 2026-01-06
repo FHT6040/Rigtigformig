@@ -136,11 +136,11 @@
         });
 
         // ========================================
-        // CATEGORY CHECKBOXES - NO CLIENT-SIDE LIMIT
+        // CATEGORY SELECTION WITH SMART FEEDBACK
         // ========================================
-        // Simple approach: Let all checkboxes work naturally
-        // Server-side validation enforces limits when form is submitted
-        console.log('Category checkboxes: Working naturally, no client-side enforcement');
+        // Checkboxes work naturally, but we provide helpful visual feedback
+        // when the user exceeds their plan's category limit
+        console.log('Category checkboxes: Natural behavior with smart feedback');
 
         // CRITICAL: Remove any event handlers from other scripts (public.js, etc.)
         // Use setTimeout to ensure this runs AFTER other scripts have initialized
@@ -148,38 +148,48 @@
             var $categoryContainer = $('#rfm-tabbed-categories');
             if ($categoryContainer.length) {
                 var $categoryCheckboxes = $categoryContainer.find('.rfm-category-checkbox');
+                var maxCategories = parseInt($categoryContainer.data('max')) || 1;
+                var $notice = $('#rfm-category-limit-notice');
 
-                console.log('Cleaning up category checkboxes...');
-                console.log('Found ' + $categoryCheckboxes.length + ' category checkboxes');
+                console.log('Initializing category selection...');
+                console.log('Found ' + $categoryCheckboxes.length + ' checkboxes, limit: ' + maxCategories);
 
-                // Unbind ALL event handlers attached by other scripts
+                // Clean up any interfering event handlers from other scripts
                 $categoryCheckboxes.off('change');
                 $categoryContainer.off('change', '.rfm-category-checkbox');
-
-                // Also remove delegated event handlers from document and body
                 $(document).off('change', '.rfm-category-checkbox');
                 $('body').off('change', '.rfm-category-checkbox');
 
-                // Re-enable all checkboxes (in case they were disabled by other scripts)
-                $categoryCheckboxes.prop('disabled', false);
+                // Function to update category limit feedback
+                function updateCategoryFeedback() {
+                    var checkedCount = $categoryCheckboxes.filter(':checked').length;
 
-                // Hide any limit notices
-                $('#rfm-category-limit-notice').hide();
-                $('#rfm-category-limit-notice-dashboard').hide();
-                $('.rfm-category-limit-notice').hide();
+                    if (checkedCount > maxCategories) {
+                        // Show helpful notice when over limit
+                        // User can still check/uncheck freely, but they know only first N will be saved
+                        $notice.show();
+                        console.log('⚠ Category count: ' + checkedCount + '/' + maxCategories + ' (over limit - only first ' + maxCategories + ' will be saved)');
+                    } else {
+                        // Hide notice when at or under limit
+                        $notice.hide();
+                        if (checkedCount > 0) {
+                            console.log('✓ Category count: ' + checkedCount + '/' + maxCategories);
+                        }
+                    }
+                }
 
-                console.log('✓ Cleaned up category checkboxes - all event handlers removed');
-                console.log('✓ All checkboxes enabled');
-                console.log('✓ All notices hidden');
+                // Attach our change handler for real-time feedback
+                $categoryCheckboxes.on('change', updateCategoryFeedback);
 
-                // GUARD: Run cleanup every 500ms to prevent other scripts from taking over
+                // Run once on page load to set initial state
+                updateCategoryFeedback();
+
+                // GUARD: Prevent other scripts from disabling checkboxes
                 setInterval(function() {
-                    // Silently re-enable checkboxes and hide notices
                     $categoryCheckboxes.prop('disabled', false);
-                    $('#rfm-category-limit-notice').hide();
-                    $('#rfm-category-limit-notice-dashboard').hide();
-                    $('.rfm-category-limit-notice').hide();
                 }, 500);
+
+                console.log('✓ Category selection feedback initialized');
             }
         }, 100); // Wait 100ms for other scripts to initialize
 

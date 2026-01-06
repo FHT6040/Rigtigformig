@@ -537,8 +537,8 @@ class RFM_Expert_Dashboard {
                                 <?php endforeach; ?>
                             </div>
 
-                            <p class="rfm-category-limit-notice" id="rfm-category-limit-notice" style="display: none; color: #e74c3c;">
-                                <?php printf(__('Du har valgt det maksimale antal kategorier (%d).', 'rigtig-for-mig'), $allowed_categories); ?>
+                            <p class="rfm-category-limit-notice" id="rfm-category-limit-notice" style="display: none; color: #e74c3c; margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                ⚠️ <?php printf(__('Du har valgt mere end %d kategorier. Kun de første %d vil blive gemt. Fjern ét valg først for at vælge en anden kategori.', 'rigtig-for-mig'), $allowed_categories, $allowed_categories); ?>
                             </p>
 
                             <p class="rfm-category-info" style="margin-top: 15px; padding: 10px; background: #f0f8ff; border-radius: 5px;">
