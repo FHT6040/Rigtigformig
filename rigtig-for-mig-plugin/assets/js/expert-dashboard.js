@@ -142,28 +142,32 @@
         $catCheckboxes.on('change', '.rfm-category-checkbox', function(e) {
             var $this = $(this);
             var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
-            var checkedCount = $checkboxes.filter(':checked').length;
 
-            console.log('RFM: Checkbox clicked. Is checked:', $this.is(':checked'), 'Total checked:', checkedCount);
+            // Use setTimeout to ensure checkbox state is stable before reading
+            setTimeout(function() {
+                var checkedCount = $checkboxes.filter(':checked').length;
 
-            // If user is trying to check more than allowed, prevent it
-            if ($this.is(':checked') && checkedCount > maxCats) {
-                console.log('RFM: Preventing check - would exceed limit');
-                $this.prop('checked', false);
-                $('#rfm-category-limit-notice').show();
-                return;
-            }
+                console.log('RFM: Checkbox changed. Total checked:', checkedCount, 'Max:', maxCats);
 
-            // Update UI based on limit
-            if (checkedCount >= maxCats) {
-                $checkboxes.not(':checked').prop('disabled', true);
-                $('#rfm-category-limit-notice').show();
-                console.log('RFM: Category limit reached. Disabling unchecked boxes.');
-            } else {
-                $checkboxes.prop('disabled', false);
-                $('#rfm-category-limit-notice').hide();
-                console.log('RFM: Category limit not reached. Enabling all boxes.');
-            }
+                // If user exceeded limit, uncheck the last one
+                if (checkedCount > maxCats) {
+                    console.log('RFM: Limit exceeded! Unchecking...');
+                    $this.prop('checked', false);
+                    $('#rfm-category-limit-notice').show();
+                    checkedCount = $checkboxes.filter(':checked').length;
+                }
+
+                // Update other checkboxes disabled state
+                if (checkedCount >= maxCats) {
+                    $checkboxes.not(':checked').prop('disabled', true);
+                    $('#rfm-category-limit-notice').show();
+                    console.log('RFM: Limit reached - disabled unchecked boxes');
+                } else {
+                    $checkboxes.prop('disabled', false);
+                    $('#rfm-category-limit-notice').hide();
+                    console.log('RFM: Under limit - all boxes enabled');
+                }
+            }, 0);
         });
 
         // Initial update on page load
