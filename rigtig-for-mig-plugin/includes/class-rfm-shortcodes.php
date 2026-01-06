@@ -290,24 +290,24 @@ class RFM_Shortcodes {
         $languages = get_post_meta($expert_id, '_rfm_languages', true);
         $language_names = array();
         if (!empty($languages) && is_array($languages)) {
-            // Map language codes to Danish names
+            // Map language codes to native/international names (matching dashboard)
             $language_map = array(
                 'dansk' => 'Dansk',
-                'english' => 'Engelsk',
-                'engelsk' => 'Engelsk',
-                'svenska' => 'Svensk',
-                'svensk' => 'Svensk',
-                'norsk' => 'Norsk',
-                'suomi' => 'Finsk',
-                'føroyskt' => 'Færøsk',
-                'faeroyskt' => 'Færøsk',
-                'kalaallisut' => 'Grønlandsk',
-                'español' => 'Spansk',
-                'espanol' => 'Spansk',
-                'italiano' => 'Italiensk',
-                'deutsch' => 'Tysk',
-                'al-arabiya' => 'Arabisk',
-                'arabic' => 'Arabisk'
+                'english' => 'English',
+                'engelsk' => 'English',
+                'svenska' => 'Svenska',
+                'svensk' => 'Svenska',
+                'norsk' => 'Norsk / Bokmål',
+                'suomi' => 'Suomi',
+                'føroyskt' => 'Føroyskt',
+                'faeroyskt' => 'Føroyskt',
+                'kalaallisut' => 'Kalaallisut',
+                'español' => 'Español',
+                'espanol' => 'Español',
+                'italiano' => 'Italiano',
+                'deutsch' => 'Deutsch',
+                'al-arabiya' => 'العربية (al-arabiya)',
+                'arabic' => 'العربية (al-arabiya)'
             );
             
             foreach ($languages as $lang) {

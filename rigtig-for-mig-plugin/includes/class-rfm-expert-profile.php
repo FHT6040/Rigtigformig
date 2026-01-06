@@ -437,13 +437,13 @@ class RFM_Expert_Profile {
             // Get languages
             $languages = get_post_meta($expert_id, '_rfm_languages', true);
             if (!empty($languages) && is_array($languages) && count($languages) > 0): 
-                // Map language codes to Danish names
+                // Map language codes to native/international names (matching dashboard)
                 $language_map = array(
                     'dansk' => 'Dansk',
-                    'english' => 'Engelsk',
-                    'engelsk' => 'Engelsk',
-                    'svenska' => 'Svensk',
-                    'svensk' => 'Svensk',
+                    'english' => 'English',
+                    'engelsk' => 'English',
+                    'svenska' => 'Svenska',
+                    'svensk' => 'Svenska',
                     'norsk' => 'Norsk / Bokmål',
                     'suomi' => 'Suomi',
                     'føroyskt' => 'Føroyskt',
