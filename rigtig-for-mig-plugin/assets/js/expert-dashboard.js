@@ -1,13 +1,11 @@
 /**
  * Expert Dashboard JavaScript
  *
- * Handles all dashboard interactions including tab switching, form submissions,
- * limit enforcement, and education management.
- *
- * Part of Phase 2 Refactoring
+ * SIMPLE APPROACH: No client-side validation, checkboxes work naturally,
+ * server handles all logic and validation.
  *
  * @package Rigtig_For_Mig
- * @since 3.6.0
+ * @since 3.8.15
  */
 
 (function($) {
@@ -16,21 +14,31 @@
     $(document).ready(function() {
 
         // ========================================
+        // AJAX URL CONFIGURATION
+        // ========================================
+        // Determine AJAX URL with fallback
+        var ajaxUrl = '';
+        if (typeof rfmDashboard !== 'undefined' && rfmDashboard.ajaxurl) {
+            ajaxUrl = rfmDashboard.ajaxurl;
+        } else {
+            // Hardcoded fallback to ajax-handler.php
+            var pluginUrl = window.location.origin + '/wp-content/plugins/rigtig-for-mig-plugin/';
+            ajaxUrl = pluginUrl + 'ajax-handler.php';
+        }
+
+        console.log('=== RFM EXPERT DASHBOARD INITIALIZED ===');
+        console.log('AJAX URL:', ajaxUrl);
+        console.log('rfmDashboard object:', typeof rfmDashboard !== 'undefined' ? rfmDashboard : 'NOT DEFINED');
+
+        // ========================================
         // TAB SWITCHING
         // ========================================
-        // Handles click events on tab buttons to switch between different dashboard views
         $('.rfm-tab-btn').on('click', function() {
             var tab = $(this).data('tab');
-
-            // Update active tab button
             $('.rfm-tab-btn').removeClass('active');
             $(this).addClass('active');
-
-            // Update active tab content
             $('.rfm-tab-content').removeClass('active');
             $('[data-tab-content="' + tab + '"]').addClass('active');
-
-            // Scroll to top of tabs
             $('html, body').animate({
                 scrollTop: $('.rfm-dashboard-tabs').offset().top - 50
             }, 300);
@@ -39,37 +47,48 @@
         // ========================================
         // GENERAL PROFILE FORM SUBMISSION
         // ========================================
-        // Handles form submission for general/basic expert profile information
         $('#rfm-general-profile-form').on('submit', function(e) {
             e.preventDefault();
+            console.log('=== FORM SUBMIT TRIGGERED ===');
 
             var $form = $(this);
             var $button = $form.find('button[type="submit"]');
             var $message = $('#rfm-tabbed-dashboard-message');
+            var formData = $form.serialize() + '&action=rfm_save_general_profile';
 
-            // Disable button and show loading state
-            $button.prop('disabled', true).text(rfmDashboard.strings.savingText || 'Gemmer...');
+            console.log('Form data:', formData);
+            console.log('Posting to:', ajaxUrl);
+
+            // Disable button
+            $button.prop('disabled', true).text('Gemmer...');
             $message.html('');
 
             $.ajax({
-                url: rfmDashboard.ajaxurl,
+                url: ajaxUrl,
                 type: 'POST',
-                data: $form.serialize() + '&action=rfm_save_general_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
+                data: formData,
                 success: function(response) {
+                    console.log('=== AJAX SUCCESS ===');
+                    console.log('Response:', response);
+
                     if (response.success) {
                         $message.html('<div class="rfm-success">' + response.data.message + '</div>');
-                        // Reload page to update category tabs
                         setTimeout(function() {
                             location.reload();
                         }, 1000);
                     } else {
                         $message.html('<div class="rfm-error">' + response.data.message + '</div>');
-                        $button.prop('disabled', false).text(rfmDashboard.strings.submitGeneralText || 'Gem generelle oplysninger');
+                        $button.prop('disabled', false).text('Gem generelle oplysninger');
                     }
                 },
-                error: function() {
-                    $message.html('<div class="rfm-error">' + (rfmDashboard.strings.errorText || 'Der opstod en fejl. Prøv igen.') + '</div>');
-                    $button.prop('disabled', false).text(rfmDashboard.strings.submitGeneralText || 'Gem generelle oplysninger');
+                error: function(xhr, status, error) {
+                    console.log('=== AJAX ERROR ===');
+                    console.log('Status:', status);
+                    console.log('Error:', error);
+                    console.log('Response:', xhr.responseText);
+
+                    $message.html('<div class="rfm-error">Der opstod en fejl. Prøv igen.</div>');
+                    $button.prop('disabled', false).text('Gem generelle oplysninger');
                 }
             });
         });
@@ -77,7 +96,6 @@
         // ========================================
         // CATEGORY PROFILE FORM SUBMISSION
         // ========================================
-        // Handles form submission for category-specific profile information
         $('.rfm-category-profile-form').on('submit', function(e) {
             e.preventDefault();
 
@@ -85,15 +103,18 @@
             var $button = $form.find('button[type="submit"]');
             var originalText = $button.text();
             var $message = $('#rfm-tabbed-dashboard-message');
+            var formData = $form.serialize() + '&action=rfm_save_category_profile';
 
-            // Disable button and show loading state
-            $button.prop('disabled', true).text(rfmDashboard.strings.savingText || 'Gemmer...');
+            console.log('=== CATEGORY FORM SUBMIT ===');
+            console.log('Posting to:', ajaxUrl);
+
+            $button.prop('disabled', true).text('Gemmer...');
             $message.html('');
 
             $.ajax({
-                url: rfmDashboard.ajaxurl,
+                url: ajaxUrl,
                 type: 'POST',
-                data: $form.serialize() + '&action=rfm_save_category_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
+                data: formData,
                 success: function(response) {
                     if (response.success) {
                         $message.html('<div class="rfm-success">' + response.data.message + '</div>');
@@ -106,25 +127,18 @@
                     $button.prop('disabled', false).text(originalText);
                 },
                 error: function() {
-                    $message.html('<div class="rfm-error">' + (rfmDashboard.strings.errorText || 'Der opstod en fejl. Prøv igen.') + '</div>');
+                    $message.html('<div class="rfm-error">Der opstod en fejl. Prøv igen.</div>');
                     $button.prop('disabled', false).text(originalText);
                 }
             });
         });
 
         // ========================================
-        // CATEGORY CHECKBOX LIMIT
+        // CATEGORY CHECKBOXES - NO CLIENT-SIDE LIMIT
         // ========================================
-        // Enforces the maximum number of categories that can be selected based on subscription plan
-        var $catCheckboxes = $('#rfm-tabbed-categories');
-        var maxCats = parseInt($catCheckboxes.data('max')) || 1;
-
-        console.log('RFM Expert Dashboard: Category limit initialized. Max categories:', maxCats);
-        console.log('RFM Expert Dashboard: AJAX URL:', rfmDashboard.ajaxurl);
-
-        // REMOVED: All client-side checkbox manipulation
-        // Checkboxes work naturally like language checkboxes
-        // Server-side validation in ajax-handler.php enforces the limit when saving
+        // Simple approach: Let all checkboxes work naturally
+        // Server-side validation enforces limits when form is submitted
+        console.log('Category checkboxes: Working naturally, no client-side enforcement');
 
         // ========================================
         // SPECIALIZATION LIMITS PER CATEGORY
@@ -200,16 +214,19 @@
         // ========================================
         // LOGOUT HANDLER
         // ========================================
-        // Handles the logout button click and redirects user to login page
         $('#rfm-logout-btn').on('click', function(e) {
             e.preventDefault();
 
+            var logoutNonce = (typeof rfmDashboard !== 'undefined' && rfmDashboard.logoutNonce)
+                ? rfmDashboard.logoutNonce
+                : '';
+
             $.ajax({
-                url: rfmDashboard.ajaxurl,
+                url: ajaxUrl,
                 type: 'POST',
                 data: {
                     action: 'rfm_expert_logout',
-                    nonce: rfmDashboard.logoutNonce
+                    nonce: logoutNonce
                 },
                 success: function(response) {
                     if (response.success) {
