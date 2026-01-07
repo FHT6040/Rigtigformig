@@ -154,6 +154,15 @@
                 console.log('Initializing category selection...');
                 console.log('Found ' + $categoryCheckboxes.length + ' checkboxes, limit: ' + maxCategories);
 
+                // SAVE INITIAL CHECKED STATES FROM PHP
+                // This is the "truth" we need to preserve
+                var initialCheckedStates = {};
+                $categoryCheckboxes.each(function() {
+                    var $cb = $(this);
+                    var id = $cb.val();
+                    initialCheckedStates[id] = $cb.is(':checked');
+                });
+
                 // DEBUG: Log initial checkbox states as rendered by PHP
                 console.log('=== INITIAL CHECKBOX STATES (from PHP) ===');
                 $categoryCheckboxes.each(function() {
@@ -190,19 +199,42 @@
                 }
 
                 // Attach our change handler for real-time feedback
-                $categoryCheckboxes.on('change', updateCategoryFeedback);
+                $categoryCheckboxes.on('change', function() {
+                    // Update our saved state when user makes a change
+                    var id = $(this).val();
+                    initialCheckedStates[id] = $(this).is(':checked');
+                    updateCategoryFeedback();
+                });
 
                 // Run once on page load to set initial state
                 updateCategoryFeedback();
 
-                // GUARD: Prevent other scripts from disabling checkboxes
+                // GUARD: Protect checkboxes from interference by other scripts
+                // This will restore the correct checked state if something tries to uncheck them
                 setInterval(function() {
-                    $categoryCheckboxes.prop('disabled', false);
+                    $categoryCheckboxes.each(function() {
+                        var $cb = $(this);
+                        var id = $cb.val();
+                        var shouldBeChecked = initialCheckedStates[id];
+                        var currentlyChecked = $cb.is(':checked');
+
+                        // Re-enable if disabled
+                        if ($cb.prop('disabled')) {
+                            $cb.prop('disabled', false);
+                        }
+
+                        // RESTORE checked state if it was changed by external script
+                        if (shouldBeChecked !== currentlyChecked) {
+                            console.log('⚡ RESTORING checkbox ' + id + ' to ' + (shouldBeChecked ? 'CHECKED' : 'UNCHECKED'));
+                            $cb.prop('checked', shouldBeChecked);
+                        }
+                    });
                 }, 500);
 
                 console.log('✓ Category selection feedback initialized');
+                console.log('✓ Checkbox state protection ACTIVE');
 
-                // DEBUG: Log states again after 2 seconds to see if anything changed
+                // DEBUG: Log states again after 2 seconds to see if protection worked
                 setTimeout(function() {
                     console.log('=== CHECKBOX STATES AFTER 2 SECONDS ===');
                     $categoryCheckboxes.each(function() {
