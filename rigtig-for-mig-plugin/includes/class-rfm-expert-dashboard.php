@@ -60,6 +60,7 @@ class RFM_Expert_Dashboard {
 
         // Localize script with translations and data
         wp_localize_script('rfm-expert-dashboard', 'rfmDashboard', array(
+            'ajaxurl' => RFM_PLUGIN_URL . 'ajax-handler.php',  // Direct AJAX handler
             'strings' => array(
                 'savingText' => __('Gemmer...', 'rigtig-for-mig'),
                 'submitGeneralText' => __('Gem generelle oplysninger', 'rigtig-for-mig'),
@@ -331,6 +332,11 @@ class RFM_Expert_Dashboard {
             $expert_categories = array();
         }
 
+        // DEBUG: Log what categories we retrieved for this expert
+        $expert_cat_ids_debug = array_map(function($cat) { return $cat->term_id; }, $expert_categories);
+        error_log("RFM RENDER DEBUG: Expert ID $expert_id - Retrieved categories from DB: " . implode(', ', $expert_cat_ids_debug));
+        error_log("RFM RENDER DEBUG: Total categories found: " . count($expert_categories));
+
         // Get all available categories
         $all_categories = get_terms(array(
             'taxonomy' => 'rfm_category',
@@ -513,22 +519,26 @@ class RFM_Expert_Dashboard {
                                  data-max="<?php echo esc_attr($allowed_categories); ?>">
                                 <?php
                                 $expert_cat_ids = array_map(function($cat) { return $cat->term_id; }, $expert_categories);
+                                error_log("RFM RENDER DEBUG: About to render checkboxes. Expert category IDs: " . implode(', ', $expert_cat_ids));
+
                                 foreach ($all_categories as $category):
                                     $color = RFM_Taxonomies::get_category_color($category->term_id);
+                                    $is_checked = in_array($category->term_id, $expert_cat_ids);
+                                    error_log("RFM RENDER DEBUG: Category {$category->term_id} ({$category->name}) - Should be checked: " . ($is_checked ? 'YES' : 'NO'));
                                 ?>
                                 <label class="rfm-category-choice" style="--cat-color: <?php echo esc_attr($color); ?>;">
                                     <input type="checkbox"
                                            name="categories[]"
                                            value="<?php echo esc_attr($category->term_id); ?>"
                                            class="rfm-category-checkbox"
-                                           <?php checked(in_array($category->term_id, $expert_cat_ids)); ?> />
+                                           <?php checked($is_checked); ?> />
                                     <span><?php echo esc_html($category->name); ?></span>
                                 </label>
                                 <?php endforeach; ?>
                             </div>
 
-                            <p class="rfm-category-limit-notice" id="rfm-category-limit-notice" style="display: none; color: #e74c3c;">
-                                <?php printf(__('Du har valgt det maksimale antal kategorier (%d).', 'rigtig-for-mig'), $allowed_categories); ?>
+                            <p class="rfm-category-limit-notice" id="rfm-category-limit-notice" style="display: none; color: #e74c3c; margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                ⚠️ <?php printf(__('Du har valgt mere end %d kategorier. Kun de første %d vil blive gemt. Fjern ét valg først for at vælge en anden kategori.', 'rigtig-for-mig'), $allowed_categories, $allowed_categories); ?>
                             </p>
 
                             <p class="rfm-category-info" style="margin-top: 15px; padding: 10px; background: #f0f8ff; border-radius: 5px;">
@@ -677,195 +687,6 @@ class RFM_Expert_Dashboard {
                 </template>
             </div>
         </div>
-
-        <script>
-        jQuery(document).ready(function($) {
-            // Tab switching
-            $('.rfm-tab-btn').on('click', function() {
-                var tab = $(this).data('tab');
-
-                // Update active tab button
-                $('.rfm-tab-btn').removeClass('active');
-                $(this).addClass('active');
-
-                // Update active tab content
-                $('.rfm-tab-content').removeClass('active');
-                $('[data-tab-content="' + tab + '"]').addClass('active');
-
-                // Scroll to top of tabs
-                $('html, body').animate({
-                    scrollTop: $('.rfm-dashboard-tabs').offset().top - 50
-                }, 300);
-            });
-
-            // General profile form submission
-            $('#rfm-general-profile-form').on('submit', function(e) {
-                e.preventDefault();
-
-                var $form = $(this);
-                var $button = $form.find('button[type="submit"]');
-                var $message = $('#rfm-tabbed-dashboard-message');
-
-                $button.prop('disabled', true).text('<?php _e('Gemmer...', 'rigtig-for-mig'); ?>');
-                $message.html('');
-
-                $.ajax({
-                    url: rfmData.ajaxurl,
-                    type: 'POST',
-                    data: $form.serialize() + '&action=rfm_save_general_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
-                    success: function(response) {
-                        if (response.success) {
-                            $message.html('<div class="rfm-success">' + response.data.message + '</div>');
-                            // Reload page to update category tabs
-                            setTimeout(function() {
-                                location.reload();
-                            }, 1000);
-                        } else {
-                            $message.html('<div class="rfm-error">' + response.data.message + '</div>');
-                            $button.prop('disabled', false).text('<?php _e('Gem generelle oplysninger', 'rigtig-for-mig'); ?>');
-                        }
-                    },
-                    error: function() {
-                        $message.html('<div class="rfm-error"><?php _e('Der opstod en fejl. Prøv igen.', 'rigtig-for-mig'); ?></div>');
-                        $button.prop('disabled', false).text('<?php _e('Gem generelle oplysninger', 'rigtig-for-mig'); ?>');
-                    }
-                });
-            });
-
-            // Category profile form submissions
-            $('.rfm-category-profile-form').on('submit', function(e) {
-                e.preventDefault();
-
-                var $form = $(this);
-                var $button = $form.find('button[type="submit"]');
-                var originalText = $button.text();
-                var $message = $('#rfm-tabbed-dashboard-message');
-
-                $button.prop('disabled', true).text('<?php _e('Gemmer...', 'rigtig-for-mig'); ?>');
-                $message.html('');
-
-                $.ajax({
-                    url: rfmData.ajaxurl,
-                    type: 'POST',
-                    data: $form.serialize() + '&action=rfm_save_category_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
-                    success: function(response) {
-                        if (response.success) {
-                            $message.html('<div class="rfm-success">' + response.data.message + '</div>');
-                            $('html, body').animate({
-                                scrollTop: $message.offset().top - 100
-                            }, 300);
-                        } else {
-                            $message.html('<div class="rfm-error">' + response.data.message + '</div>');
-                        }
-                        $button.prop('disabled', false).text(originalText);
-                    },
-                    error: function() {
-                        $message.html('<div class="rfm-error"><?php _e('Der opstod en fejl. Prøv igen.', 'rigtig-for-mig'); ?></div>');
-                        $button.prop('disabled', false).text(originalText);
-                    }
-                });
-            });
-
-            // Category checkbox limit
-            var $catCheckboxes = $('#rfm-tabbed-categories');
-            var maxCats = parseInt($catCheckboxes.data('max')) || 1;
-
-            function updateCategoryLimit() {
-                var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
-                var checkedCount = $checkboxes.filter(':checked').length;
-
-                if (checkedCount >= maxCats) {
-                    $checkboxes.not(':checked').prop('disabled', true);
-                    $('#rfm-category-limit-notice').show();
-                } else {
-                    $checkboxes.prop('disabled', false);
-                    $('#rfm-category-limit-notice').hide();
-                }
-            }
-
-            $catCheckboxes.on('change', '.rfm-category-checkbox', updateCategoryLimit);
-            updateCategoryLimit();
-
-            // Specialization limits per category
-            $('.rfm-specialization-checkboxes').each(function() {
-                var $container = $(this);
-                var maxSpecs = parseInt($container.data('max')) || 1;
-
-                function updateSpecLimit() {
-                    var $checkboxes = $container.find('.rfm-spec-checkbox');
-                    var checkedCount = $checkboxes.filter(':checked').length;
-
-                    if (checkedCount >= maxSpecs) {
-                        $checkboxes.not(':checked').prop('disabled', true);
-                        $container.siblings('.rfm-spec-limit-notice').show();
-                    } else {
-                        $checkboxes.prop('disabled', false);
-                        $container.siblings('.rfm-spec-limit-notice').hide();
-                    }
-                }
-
-                $container.on('change', '.rfm-spec-checkbox', updateSpecLimit);
-                updateSpecLimit();
-            });
-
-            // Add education for category
-            $('.rfm-add-category-education').on('click', function() {
-                var categoryId = $(this).data('category-id');
-                var $container = $(this).closest('.rfm-category-education-section').find('.rfm-category-educations-container');
-                var maxEducations = parseInt($container.data('max')) || 1;
-                var currentCount = $container.find('.rfm-category-education-item').length;
-
-                if (currentCount >= maxEducations) {
-                    $(this).siblings('.rfm-cat-education-limit-notice').show();
-                    return;
-                }
-
-                var template = $('#rfm-category-education-template').html();
-                var newIndex = Date.now();
-
-                template = template.replace(/__INDEX__/g, newIndex);
-                template = template.replace(/__CATEGORY_ID__/g, categoryId);
-
-                $container.append(template);
-
-                // Check limit again
-                if ($container.find('.rfm-category-education-item').length >= maxEducations) {
-                    $(this).siblings('.rfm-cat-education-limit-notice').show();
-                }
-            });
-
-            // Remove education
-            $(document).on('click', '.rfm-category-education-remove', function() {
-                var $item = $(this).closest('.rfm-category-education-item');
-                var $container = $item.closest('.rfm-category-educations-container');
-
-                $item.slideUp(300, function() {
-                    $(this).remove();
-                    // Hide limit notice
-                    $container.closest('.rfm-category-education-section').find('.rfm-cat-education-limit-notice').hide();
-                });
-            });
-
-            // Handle logout
-            $('#rfm-logout-btn').on('click', function(e) {
-                e.preventDefault();
-
-                $.ajax({
-                    url: rfmData.ajaxurl,
-                    type: 'POST',
-                    data: {
-                        action: 'rfm_expert_logout',
-                        nonce: '<?php echo wp_create_nonce('rfm_logout'); ?>'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            window.location.href = response.data.redirect;
-                        }
-                    }
-                });
-            });
-        });
-        </script>
         <?php
         return ob_get_clean();
     }

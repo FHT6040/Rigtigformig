@@ -1,13 +1,11 @@
 /**
  * Expert Dashboard JavaScript
  *
- * Handles all dashboard interactions including tab switching, form submissions,
- * limit enforcement, and education management.
- *
- * Part of Phase 2 Refactoring
+ * SIMPLE APPROACH: No client-side validation, checkboxes work naturally,
+ * server handles all logic and validation.
  *
  * @package Rigtig_For_Mig
- * @since 3.6.0
+ * @since 3.8.15
  */
 
 (function($) {
@@ -16,21 +14,31 @@
     $(document).ready(function() {
 
         // ========================================
+        // AJAX URL CONFIGURATION
+        // ========================================
+        // Determine AJAX URL with fallback
+        var ajaxUrl = '';
+        if (typeof rfmDashboard !== 'undefined' && rfmDashboard.ajaxurl) {
+            ajaxUrl = rfmDashboard.ajaxurl;
+        } else {
+            // Hardcoded fallback to ajax-handler.php
+            var pluginUrl = window.location.origin + '/wp-content/plugins/rigtig-for-mig-plugin/';
+            ajaxUrl = pluginUrl + 'ajax-handler.php';
+        }
+
+        console.log('=== RFM EXPERT DASHBOARD INITIALIZED ===');
+        console.log('AJAX URL:', ajaxUrl);
+        console.log('rfmDashboard object:', typeof rfmDashboard !== 'undefined' ? rfmDashboard : 'NOT DEFINED');
+
+        // ========================================
         // TAB SWITCHING
         // ========================================
-        // Handles click events on tab buttons to switch between different dashboard views
         $('.rfm-tab-btn').on('click', function() {
             var tab = $(this).data('tab');
-
-            // Update active tab button
             $('.rfm-tab-btn').removeClass('active');
             $(this).addClass('active');
-
-            // Update active tab content
             $('.rfm-tab-content').removeClass('active');
             $('[data-tab-content="' + tab + '"]').addClass('active');
-
-            // Scroll to top of tabs
             $('html, body').animate({
                 scrollTop: $('.rfm-dashboard-tabs').offset().top - 50
             }, 300);
@@ -39,37 +47,50 @@
         // ========================================
         // GENERAL PROFILE FORM SUBMISSION
         // ========================================
-        // Handles form submission for general/basic expert profile information
         $('#rfm-general-profile-form').on('submit', function(e) {
             e.preventDefault();
+            console.log('=== FORM SUBMIT TRIGGERED ===');
 
             var $form = $(this);
             var $button = $form.find('button[type="submit"]');
             var $message = $('#rfm-tabbed-dashboard-message');
+            var formData = $form.serialize() + '&action=rfm_save_general_profile';
 
-            // Disable button and show loading state
-            $button.prop('disabled', true).text(rfmDashboard.strings.savingText || 'Gemmer...');
+            console.log('Form data:', formData);
+            console.log('Posting to:', ajaxUrl);
+
+            // Disable button
+            $button.prop('disabled', true).text('Gemmer...');
             $message.html('');
 
             $.ajax({
-                url: rfmData.ajaxurl,
+                url: ajaxUrl,
                 type: 'POST',
-                data: $form.serialize() + '&action=rfm_save_general_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
+                data: formData,
                 success: function(response) {
+                    console.log('=== AJAX SUCCESS ===');
+                    console.log('Response:', response);
+
                     if (response.success) {
                         $message.html('<div class="rfm-success">' + response.data.message + '</div>');
-                        // Reload page to update category tabs
                         setTimeout(function() {
-                            location.reload();
+                            // Force reload bypassing cache
+                            var cacheBuster = '?_=' + new Date().getTime();
+                            window.location.href = window.location.pathname + window.location.search + cacheBuster;
                         }, 1000);
                     } else {
                         $message.html('<div class="rfm-error">' + response.data.message + '</div>');
-                        $button.prop('disabled', false).text(rfmDashboard.strings.submitGeneralText || 'Gem generelle oplysninger');
+                        $button.prop('disabled', false).text('Gem generelle oplysninger');
                     }
                 },
-                error: function() {
-                    $message.html('<div class="rfm-error">' + (rfmDashboard.strings.errorText || 'Der opstod en fejl. Prøv igen.') + '</div>');
-                    $button.prop('disabled', false).text(rfmDashboard.strings.submitGeneralText || 'Gem generelle oplysninger');
+                error: function(xhr, status, error) {
+                    console.log('=== AJAX ERROR ===');
+                    console.log('Status:', status);
+                    console.log('Error:', error);
+                    console.log('Response:', xhr.responseText);
+
+                    $message.html('<div class="rfm-error">Der opstod en fejl. Prøv igen.</div>');
+                    $button.prop('disabled', false).text('Gem generelle oplysninger');
                 }
             });
         });
@@ -77,7 +98,6 @@
         // ========================================
         // CATEGORY PROFILE FORM SUBMISSION
         // ========================================
-        // Handles form submission for category-specific profile information
         $('.rfm-category-profile-form').on('submit', function(e) {
             e.preventDefault();
 
@@ -85,15 +105,18 @@
             var $button = $form.find('button[type="submit"]');
             var originalText = $button.text();
             var $message = $('#rfm-tabbed-dashboard-message');
+            var formData = $form.serialize() + '&action=rfm_save_category_profile';
 
-            // Disable button and show loading state
-            $button.prop('disabled', true).text(rfmDashboard.strings.savingText || 'Gemmer...');
+            console.log('=== CATEGORY FORM SUBMIT ===');
+            console.log('Posting to:', ajaxUrl);
+
+            $button.prop('disabled', true).text('Gemmer...');
             $message.html('');
 
             $.ajax({
-                url: rfmData.ajaxurl,
+                url: ajaxUrl,
                 type: 'POST',
-                data: $form.serialize() + '&action=rfm_save_category_profile&nonce=' + $form.find('[name="rfm_tabbed_nonce"]').val(),
+                data: formData,
                 success: function(response) {
                     if (response.success) {
                         $message.html('<div class="rfm-success">' + response.data.message + '</div>');
@@ -106,34 +129,125 @@
                     $button.prop('disabled', false).text(originalText);
                 },
                 error: function() {
-                    $message.html('<div class="rfm-error">' + (rfmDashboard.strings.errorText || 'Der opstod en fejl. Prøv igen.') + '</div>');
+                    $message.html('<div class="rfm-error">Der opstod en fejl. Prøv igen.</div>');
                     $button.prop('disabled', false).text(originalText);
                 }
             });
         });
 
         // ========================================
-        // CATEGORY CHECKBOX LIMIT
+        // CATEGORY SELECTION WITH SMART FEEDBACK
         // ========================================
-        // Enforces the maximum number of categories that can be selected based on subscription plan
-        var $catCheckboxes = $('#rfm-tabbed-categories');
-        var maxCats = parseInt($catCheckboxes.data('max')) || 1;
+        // Checkboxes work naturally, but we provide helpful visual feedback
+        // when the user exceeds their plan's category limit
+        console.log('Category checkboxes: Natural behavior with smart feedback');
 
-        function updateCategoryLimit() {
-            var $checkboxes = $catCheckboxes.find('.rfm-category-checkbox');
-            var checkedCount = $checkboxes.filter(':checked').length;
+        // CRITICAL: Remove any event handlers from other scripts (public.js, etc.)
+        // Use setTimeout to ensure this runs AFTER other scripts have initialized
+        setTimeout(function() {
+            var $categoryContainer = $('#rfm-tabbed-categories');
+            if ($categoryContainer.length) {
+                var $categoryCheckboxes = $categoryContainer.find('.rfm-category-checkbox');
+                var maxCategories = parseInt($categoryContainer.data('max')) || 1;
+                var $notice = $('#rfm-category-limit-notice');
 
-            if (checkedCount >= maxCats) {
-                $checkboxes.not(':checked').prop('disabled', true);
-                $('#rfm-category-limit-notice').show();
-            } else {
-                $checkboxes.prop('disabled', false);
-                $('#rfm-category-limit-notice').hide();
+                console.log('Initializing category selection...');
+                console.log('Found ' + $categoryCheckboxes.length + ' checkboxes, limit: ' + maxCategories);
+
+                // SAVE INITIAL CHECKED STATES FROM PHP
+                // This is the "truth" we need to preserve
+                var initialCheckedStates = {};
+                $categoryCheckboxes.each(function() {
+                    var $cb = $(this);
+                    var id = $cb.val();
+                    initialCheckedStates[id] = $cb.is(':checked');
+                });
+
+                // DEBUG: Log initial checkbox states as rendered by PHP
+                console.log('=== INITIAL CHECKBOX STATES (from PHP) ===');
+                $categoryCheckboxes.each(function() {
+                    var $cb = $(this);
+                    var id = $cb.val();
+                    var name = $cb.siblings('span').text();
+                    var isChecked = $cb.is(':checked');
+                    var hasCheckedAttr = typeof $cb.attr('checked') !== 'undefined';
+                    console.log('Category ' + id + ' (' + name + '): checked=' + isChecked + ', has checked attr=' + hasCheckedAttr);
+                });
+
+                // Clean up any interfering event handlers from other scripts
+                $categoryCheckboxes.off('change');
+                $categoryContainer.off('change', '.rfm-category-checkbox');
+                $(document).off('change', '.rfm-category-checkbox');
+                $('body').off('change', '.rfm-category-checkbox');
+
+                // Function to update category limit feedback
+                function updateCategoryFeedback() {
+                    var checkedCount = $categoryCheckboxes.filter(':checked').length;
+
+                    if (checkedCount > maxCategories) {
+                        // Show helpful notice when over limit
+                        // User can still check/uncheck freely, but they know only first N will be saved
+                        $notice.show();
+                        console.log('⚠ Category count: ' + checkedCount + '/' + maxCategories + ' (over limit - only first ' + maxCategories + ' will be saved)');
+                    } else {
+                        // Hide notice when at or under limit
+                        $notice.hide();
+                        if (checkedCount > 0) {
+                            console.log('✓ Category count: ' + checkedCount + '/' + maxCategories);
+                        }
+                    }
+                }
+
+                // Attach our change handler for real-time feedback
+                $categoryCheckboxes.on('change', function() {
+                    // Update our saved state when user makes a change
+                    var id = $(this).val();
+                    initialCheckedStates[id] = $(this).is(':checked');
+                    updateCategoryFeedback();
+                });
+
+                // Run once on page load to set initial state
+                updateCategoryFeedback();
+
+                // GUARD: Protect checkboxes from interference by other scripts
+                // This will restore the correct checked state if something tries to uncheck them
+                setInterval(function() {
+                    $categoryCheckboxes.each(function() {
+                        var $cb = $(this);
+                        var id = $cb.val();
+                        var shouldBeChecked = initialCheckedStates[id];
+                        var currentlyChecked = $cb.is(':checked');
+
+                        // Re-enable if disabled
+                        if ($cb.prop('disabled')) {
+                            $cb.prop('disabled', false);
+                        }
+
+                        // RESTORE checked state if it was changed by external script
+                        if (shouldBeChecked !== currentlyChecked) {
+                            console.log('⚡ RESTORING checkbox ' + id + ' to ' + (shouldBeChecked ? 'CHECKED' : 'UNCHECKED'));
+                            $cb.prop('checked', shouldBeChecked);
+                        }
+                    });
+                }, 500);
+
+                console.log('✓ Category selection feedback initialized');
+                console.log('✓ Checkbox state protection ACTIVE');
+
+                // DEBUG: Log states again after 2 seconds to see if protection worked
+                setTimeout(function() {
+                    console.log('=== CHECKBOX STATES AFTER 2 SECONDS ===');
+                    $categoryCheckboxes.each(function() {
+                        var $cb = $(this);
+                        var id = $cb.val();
+                        var name = $cb.siblings('span').text();
+                        var isChecked = $cb.is(':checked');
+                        var isDisabled = $cb.prop('disabled');
+                        console.log('Category ' + id + ' (' + name + '): checked=' + isChecked + ', disabled=' + isDisabled);
+                    });
+                }, 2000);
             }
-        }
-
-        $catCheckboxes.on('change', '.rfm-category-checkbox', updateCategoryLimit);
-        updateCategoryLimit();
+        }, 100); // Wait 100ms for other scripts to initialize
 
         // ========================================
         // SPECIALIZATION LIMITS PER CATEGORY
@@ -209,16 +323,19 @@
         // ========================================
         // LOGOUT HANDLER
         // ========================================
-        // Handles the logout button click and redirects user to login page
         $('#rfm-logout-btn').on('click', function(e) {
             e.preventDefault();
 
+            var logoutNonce = (typeof rfmDashboard !== 'undefined' && rfmDashboard.logoutNonce)
+                ? rfmDashboard.logoutNonce
+                : '';
+
             $.ajax({
-                url: rfmData.ajaxurl,
+                url: ajaxUrl,
                 type: 'POST',
                 data: {
                     action: 'rfm_expert_logout',
-                    nonce: rfmDashboard.logoutNonce
+                    nonce: logoutNonce
                 },
                 success: function(response) {
                     if (response.success) {

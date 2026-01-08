@@ -3,7 +3,7 @@
  * Plugin Name: Rigtig for mig - Ekspert Markedsplads
  * Plugin URI: https://rigtigformig.dk
  * Description: En komplet markedsplads for terapeuter, coaches, mentorer og vejledere med profilsider, ratings, abonnementer og multi-language support.
- * Version: 3.7.2
+ * Version: 3.8.23
  * Author: Rigtig for mig
  * Author URI: https://rigtigformig.dk
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('RFM_VERSION', '3.7.2');
+define('RFM_VERSION', '3.8.23');
 define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -128,10 +128,13 @@ class Rigtig_For_Mig {
         
         // Initialize components
         add_action('init', array($this, 'init_components'));
-        
+
         // Enqueue scripts and styles
         add_action('wp_enqueue_scripts', array($this, 'enqueue_public_assets'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+
+        // Override WordPress login URL to use custom login page
+        add_filter('login_url', array($this, 'custom_login_url'), 10, 3);
     }
     
     /**
@@ -159,7 +162,47 @@ class Rigtig_For_Mig {
         // Flush rewrite rules
         flush_rewrite_rules();
     }
-    
+
+    /**
+     * Override WordPress login URL to use custom login page
+     *
+     * @param string $login_url The login URL
+     * @param string $redirect The redirect URL after login
+     * @param bool $force_reauth Whether to force reauthentication
+     * @return string Custom login URL
+     */
+    public function custom_login_url($login_url, $redirect = '', $force_reauth = false) {
+        // Only use custom login for frontend users (Eksperter og Brugere)
+        // Check if redirect points to frontend dashboards
+        $use_custom_login = false;
+
+        if (!empty($redirect)) {
+            $redirect_lower = strtolower($redirect);
+            if (strpos($redirect_lower, 'ekspert-dashboard') !== false ||
+                strpos($redirect_lower, 'bruger-dashboard') !== false) {
+                $use_custom_login = true;
+            }
+        }
+
+        // If not a frontend dashboard redirect, use standard WordPress login
+        if (!$use_custom_login) {
+            return $login_url;
+        }
+
+        // Use custom /login/ page for frontend users
+        $custom_login = home_url('/login/');
+
+        if (!empty($redirect)) {
+            $custom_login = add_query_arg('redirect_to', urlencode($redirect), $custom_login);
+        }
+
+        if ($force_reauth) {
+            $custom_login = add_query_arg('reauth', '1', $custom_login);
+        }
+
+        return $custom_login;
+    }
+
     /**
      * Set default plugin options
      */

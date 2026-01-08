@@ -40,6 +40,9 @@ class RFM_Upload_Manager {
         add_action('before_delete_post', array($this, 'delete_post_attachments'), 10, 2);
         add_action('wp_trash_post', array($this, 'trash_post_attachments'));
 
+        // Auto-delete attachments when user is deleted
+        add_action('delete_user', array($this, 'delete_user_attachments'), 10, 3);
+
         // Filter Media Library (hide RFM uploads from standard view)
         add_filter('ajax_query_attachments_args', array($this, 'filter_media_library'));
 
@@ -51,6 +54,8 @@ class RFM_Upload_Manager {
     /**
      * Set custom upload directory for Experts and Users
      *
+     * Creates isolated directories: /rfm/users/{user_id}/ and /rfm/experts/{expert_id}/
+     *
      * @param array $dirs WordPress upload directories
      * @return array Modified upload directories
      */
@@ -61,24 +66,30 @@ class RFM_Upload_Manager {
 
             // User avatar upload from frontend dashboard
             if ($action === 'rfm_upload_user_avatar') {
-                $custom_dir = '/brugere';
-                $dirs['path'] = $dirs['basedir'] . $custom_dir;
-                $dirs['url'] = $dirs['baseurl'] . $custom_dir;
-                $dirs['subdir'] = $custom_dir;
+                if (is_user_logged_in()) {
+                    $user_id = get_current_user_id();
+                    $custom_dir = '/rfm/users/' . $user_id;
+                    $dirs['path'] = $dirs['basedir'] . $custom_dir;
+                    $dirs['url'] = $dirs['baseurl'] . $custom_dir;
+                    $dirs['subdir'] = $custom_dir;
 
-                rfm_log("RFM Upload: Redirecting user avatar upload to {$dirs['path']}");
-                return $dirs;
+                    error_log("RFM Upload: Redirecting user {$user_id} avatar upload to {$dirs['path']}");
+                    return $dirs;
+                }
             }
 
             // Expert profile image upload
             if ($action === 'rfm_upload_expert_avatar' || $action === 'rfm_upload_expert_image') {
-                $custom_dir = '/eksperter';
-                $dirs['path'] = $dirs['basedir'] . $custom_dir;
-                $dirs['url'] = $dirs['baseurl'] . $custom_dir;
-                $dirs['subdir'] = $custom_dir;
+                $post_id = $this->get_current_post_id();
+                if ($post_id) {
+                    $custom_dir = '/rfm/experts/' . $post_id;
+                    $dirs['path'] = $dirs['basedir'] . $custom_dir;
+                    $dirs['url'] = $dirs['baseurl'] . $custom_dir;
+                    $dirs['subdir'] = $custom_dir;
 
-                rfm_log("RFM Upload: Redirecting expert upload to {$dirs['path']}");
-                return $dirs;
+                    error_log("RFM Upload: Redirecting expert {$post_id} upload to {$dirs['path']}");
+                    return $dirs;
+                }
             }
         }
 
@@ -93,20 +104,20 @@ class RFM_Upload_Manager {
 
         // Set custom directory based on post type
         if ($post_type === 'rfm_expert') {
-            $custom_dir = '/eksperter';
+            $custom_dir = '/rfm/experts/' . $post_id;
             $dirs['path'] = $dirs['basedir'] . $custom_dir;
             $dirs['url'] = $dirs['baseurl'] . $custom_dir;
             $dirs['subdir'] = $custom_dir;
 
-            rfm_log("RFM Upload: Redirecting expert post upload to {$dirs['path']}");
+            error_log("RFM Upload: Redirecting expert post {$post_id} upload to {$dirs['path']}");
 
         } elseif ($post_type === 'rfm_bruger') {
-            $custom_dir = '/brugere';
+            $custom_dir = '/rfm/brugere/' . $post_id;
             $dirs['path'] = $dirs['basedir'] . $custom_dir;
             $dirs['url'] = $dirs['baseurl'] . $custom_dir;
             $dirs['subdir'] = $custom_dir;
 
-            rfm_log("RFM Upload: Redirecting user post upload to {$dirs['path']}");
+            error_log("RFM Upload: Redirecting bruger post {$post_id} upload to {$dirs['path']}");
         }
 
         return $dirs;
@@ -148,6 +159,23 @@ class RFM_Upload_Manager {
      * @param int $attachment_id Attachment post ID
      */
     public function tag_attachment_owner($attachment_id) {
+        // Check if this is a user avatar upload
+        if (defined('DOING_AJAX') && DOING_AJAX) {
+            $action = isset($_REQUEST['action']) ? $_REQUEST['action'] : '';
+
+            if ($action === 'rfm_upload_user_avatar' && is_user_logged_in()) {
+                $user_id = get_current_user_id();
+                update_post_meta($attachment_id, '_rfm_owner_type', 'user');
+                update_post_meta($attachment_id, '_rfm_owner_id', $user_id);
+                update_post_meta($attachment_id, '_rfm_upload_type', 'avatar');
+                update_post_meta($attachment_id, '_rfm_upload_date', current_time('mysql'));
+
+                error_log("RFM Upload: Tagged user avatar $attachment_id for user $user_id");
+                return;
+            }
+        }
+
+        // Check for post-based uploads
         $parent_id = wp_get_post_parent_id($attachment_id);
 
         if (!$parent_id) {
@@ -256,6 +284,87 @@ class RFM_Upload_Manager {
             wp_trash_post($attachment->ID);
             error_log("RFM Upload: Trashed attachment {$attachment->ID}");
         }
+    }
+
+    /**
+     * Delete all attachments when user is deleted
+     *
+     * @param int $user_id User ID being deleted
+     * @param int $reassign ID of user to reassign posts to
+     * @param WP_User $user User object
+     */
+    public function delete_user_attachments($user_id, $reassign, $user) {
+        error_log("RFM Upload: Deleting attachments for user ID $user_id");
+
+        // Find all attachments that belong to this user
+        $attachments = get_posts(array(
+            'post_type'      => 'attachment',
+            'posts_per_page' => -1,
+            'post_status'    => 'any',
+            'meta_query'     => array(
+                array(
+                    'key'     => '_rfm_owner_type',
+                    'value'   => 'user',
+                    'compare' => '='
+                ),
+                array(
+                    'key'     => '_rfm_owner_id',
+                    'value'   => $user_id,
+                    'compare' => '='
+                )
+            )
+        ));
+
+        $deleted_count = 0;
+
+        foreach ($attachments as $attachment) {
+            // Force delete attachment and files
+            $deleted = wp_delete_attachment($attachment->ID, true);
+
+            if ($deleted) {
+                $deleted_count++;
+                error_log("RFM Upload: Deleted user attachment {$attachment->ID} ({$attachment->post_title})");
+            } else {
+                error_log("RFM Upload: Failed to delete user attachment {$attachment->ID}");
+            }
+        }
+
+        // Also delete the user's upload directory if it exists
+        $upload_dir = wp_upload_dir();
+        $user_dir = $upload_dir['basedir'] . '/rfm/users/' . $user_id;
+
+        if (is_dir($user_dir)) {
+            $this->delete_directory_recursive($user_dir);
+            error_log("RFM Upload: Deleted user directory: $user_dir");
+        }
+
+        error_log("RFM Upload: Deleted $deleted_count attachments for user ID $user_id");
+    }
+
+    /**
+     * Recursively delete a directory and all its contents
+     *
+     * @param string $dir Directory path
+     * @return bool Success
+     */
+    private function delete_directory_recursive($dir) {
+        if (!is_dir($dir)) {
+            return false;
+        }
+
+        $items = array_diff(scandir($dir), array('.', '..'));
+
+        foreach ($items as $item) {
+            $path = $dir . '/' . $item;
+
+            if (is_dir($path)) {
+                $this->delete_directory_recursive($path);
+            } else {
+                unlink($path);
+            }
+        }
+
+        return rmdir($dir);
     }
 
     /**

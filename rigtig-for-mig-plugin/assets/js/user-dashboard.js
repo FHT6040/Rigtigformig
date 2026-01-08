@@ -38,6 +38,97 @@
     $(document).ready(function() {
 
         // ========================================
+        // AVATAR UPLOAD
+        // ========================================
+        $('#rfm-upload-avatar-btn').on('click', function() {
+            $('#rfm-avatar-input').click();
+        });
+
+        $('#rfm-avatar-input').on('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                $('#rfm-user-dashboard-message').html('<div class="rfm-error">Filen er for stor. Maksimum 5MB.</div>');
+                return;
+            }
+
+            // Validate file type
+            var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (allowedTypes.indexOf(file.type) === -1) {
+                $('#rfm-user-dashboard-message').html('<div class="rfm-error">Ugyldig filtype. Kun JPG, PNG, GIF og WebP er tilladt.</div>');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('action', 'rfm_upload_user_avatar');
+            formData.append('nonce', rfmUserDashboard.nonce);
+            formData.append('avatar_image', file);
+
+            var $button = $('#rfm-upload-avatar-btn');
+            var originalText = $button.text();
+            $button.prop('disabled', true).text('Uploader...');
+
+            $.ajax({
+                url: rfmUserDashboard.ajaxurl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                cache: false,
+                success: function(response) {
+                    if (response.success) {
+                        // Update hidden field
+                        $('#user_avatar_id').val(response.data.attachment_id);
+
+                        // Update preview
+                        var $preview = $('.rfm-avatar-preview');
+                        $preview.addClass('has-avatar');
+                        $preview.html(response.data.image_html);
+
+                        // Update button text
+                        $button.text('Skift billede');
+
+                        // Add remove button if not exists
+                        if (!$('#rfm-remove-avatar-btn').length) {
+                            $('.rfm-avatar-buttons').append(
+                                '<button type="button" id="rfm-remove-avatar-btn" class="rfm-btn rfm-btn-small rfm-btn-danger">Fjern</button>'
+                            );
+                        }
+
+                        $('#rfm-user-dashboard-message').html('<div class="rfm-success">' + response.data.message + '</div>');
+                    } else {
+                        var errorMsg = (response.data && response.data.message) ? response.data.message : 'Upload fejlede. Prøv igen.';
+                        $('#rfm-user-dashboard-message').html('<div class="rfm-error">' + errorMsg + '</div>');
+                    }
+                    $button.prop('disabled', false).text(originalText);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Avatar upload error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    $('#rfm-user-dashboard-message').html('<div class="rfm-error">Upload fejlede. Prøv igen.</div>');
+                    $button.prop('disabled', false).text(originalText);
+                }
+            });
+        });
+
+        // Remove avatar
+        $(document).on('click', '#rfm-remove-avatar-btn', function() {
+            if (confirm('Er du sikker på, at du vil fjerne dit profilbillede?')) {
+                $('#user_avatar_id').val('');
+                $('.rfm-avatar-preview').removeClass('has-avatar').html(
+                    '<div class="rfm-avatar-placeholder"><span class="dashicons dashicons-admin-users"></span></div>'
+                );
+                $('#rfm-upload-avatar-btn').text('Upload billede');
+                $(this).remove();
+                $('#rfm-user-dashboard-message').html('<div class="rfm-success">Profilbillede fjernet. Gem ændringer for at bekræfte.</div>');
+            }
+        });
+
+        // ========================================
         // PROFILE FORM SUBMISSION
         // ========================================
         $('#rfm-user-profile-form').on('submit', function(e) {
@@ -58,6 +149,7 @@
                 display_name: $('#user_display_name').val(),
                 phone: $('#user_phone').val(),
                 bio: $('#user_bio').val(),
+                avatar_id: $('#user_avatar_id').val(),
                 _cache_buster: rfmUserDashboard.cache_buster || Date.now(),
                 _timestamp: rfmUserDashboard.timestamp || Date.now()
             };
