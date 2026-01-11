@@ -3,7 +3,7 @@
  * Plugin Name: Rigtig for mig - Ekspert Markedsplads
  * Plugin URI: https://rigtigformig.dk
  * Description: En komplet markedsplads for terapeuter, coaches, mentorer og vejledere med profilsider, ratings, abonnementer og multi-language support.
- * Version: 3.8.28
+ * Version: 3.8.29
  * Author: Rigtig for mig
  * Author URI: https://rigtigformig.dk
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('RFM_VERSION', '3.8.28');
+define('RFM_VERSION', '3.8.29');
 define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -79,6 +79,7 @@ class Rigtig_For_Mig {
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-email-verification.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-subscriptions.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-ratings.php';
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-messages.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-expert-profile.php';
 
         // Expert system - Refactored modular classes (v3.5.0+)

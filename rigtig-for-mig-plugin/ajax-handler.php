@@ -124,6 +124,30 @@ switch ($action) {
         rfm_direct_submit_rating();
         break;
 
+    case 'rfm_send_message':
+        rfm_direct_send_message();
+        break;
+
+    case 'rfm_get_messages':
+        rfm_direct_get_messages();
+        break;
+
+    case 'rfm_get_conversation':
+        rfm_direct_get_conversation();
+        break;
+
+    case 'rfm_mark_message_read':
+        rfm_direct_mark_message_read();
+        break;
+
+    case 'rfm_delete_message':
+        rfm_direct_delete_message();
+        break;
+
+    case 'rfm_get_conversations':
+        rfm_direct_get_conversations();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -808,6 +832,307 @@ function rfm_direct_submit_rating() {
     } else {
         wp_send_json_error(array(
             'message' => __('Der opstod en fejl. Prøv venligst igen.', 'rigtig-for-mig')
+        ));
+    }
+    exit;
+}
+
+/**
+ * Handle sending a message
+ *
+ * @since 3.8.29
+ */
+function rfm_direct_send_message() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind for at sende en besked.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+    $subject = isset($_POST['subject']) ? sanitize_text_field($_POST['subject']) : '';
+    $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
+    $user_id = get_current_user_id();
+
+    // Validate
+    if (!$expert_id || empty($message)) {
+        wp_send_json_error(array(
+            'message' => __('Besked og ekspert-ID er påkrævet.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    // Check if expert exists
+    if (get_post_type($expert_id) !== 'rfm_expert') {
+        wp_send_json_error(array(
+            'message' => __('Ekspert ikke fundet.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    // Send message using Messages class
+    if (class_exists('RFM_Messages')) {
+        $messages = RFM_Messages::get_instance();
+        $message_id = $messages->send_message($user_id, $expert_id, $subject, $message);
+
+        if ($message_id) {
+            wp_send_json_success(array(
+                'message' => __('Din besked er sendt!', 'rigtig-for-mig'),
+                'message_id' => $message_id
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => __('Der opstod en fejl ved afsendelse. Prøv venligst igen.', 'rigtig-for-mig')
+            ));
+        }
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
+        ));
+    }
+    exit;
+}
+
+/**
+ * Handle getting messages
+ *
+ * @since 3.8.29
+ */
+function rfm_direct_get_messages() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $box = isset($_POST['box']) ? sanitize_text_field($_POST['box']) : 'inbox';
+    $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 20;
+    $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
+
+    if (class_exists('RFM_Messages')) {
+        $messages = RFM_Messages::get_instance();
+        $messages_list = $messages->get_messages($user_id, $box, $limit, $offset);
+
+        wp_send_json_success(array(
+            'messages' => $messages_list
+        ));
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
+        ));
+    }
+    exit;
+}
+
+/**
+ * Handle getting conversation
+ *
+ * @since 3.8.29
+ */
+function rfm_direct_get_conversation() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+
+    if (!$expert_id) {
+        wp_send_json_error(array(
+            'message' => __('Ekspert-ID er påkrævet.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    if (class_exists('RFM_Messages')) {
+        $messages = RFM_Messages::get_instance();
+        $conversation = $messages->get_conversation($user_id, $expert_id);
+
+        wp_send_json_success(array(
+            'conversation' => $conversation
+        ));
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
+        ));
+    }
+    exit;
+}
+
+/**
+ * Handle marking message as read
+ *
+ * @since 3.8.29
+ */
+function rfm_direct_mark_message_read() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $message_id = isset($_POST['message_id']) ? intval($_POST['message_id']) : 0;
+
+    if (!$message_id) {
+        wp_send_json_error(array(
+            'message' => __('Besked-ID er påkrævet.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    if (class_exists('RFM_Messages')) {
+        $messages = RFM_Messages::get_instance();
+        $success = $messages->mark_as_read($message_id, $user_id);
+
+        if ($success) {
+            wp_send_json_success(array(
+                'message' => __('Besked markeret som læst.', 'rigtig-for-mig')
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => __('Kunne ikke markere besked som læst.', 'rigtig-for-mig')
+            ));
+        }
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
+        ));
+    }
+    exit;
+}
+
+/**
+ * Handle deleting message
+ *
+ * @since 3.8.29
+ */
+function rfm_direct_delete_message() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $message_id = isset($_POST['message_id']) ? intval($_POST['message_id']) : 0;
+
+    if (!$message_id) {
+        wp_send_json_error(array(
+            'message' => __('Besked-ID er påkrævet.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    if (class_exists('RFM_Messages')) {
+        $messages = RFM_Messages::get_instance();
+        $success = $messages->delete_message($message_id, $user_id);
+
+        if ($success) {
+            wp_send_json_success(array(
+                'message' => __('Besked slettet.', 'rigtig-for-mig')
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => __('Kunne ikke slette besked.', 'rigtig-for-mig')
+            ));
+        }
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
+        ));
+    }
+    exit;
+}
+
+/**
+ * Handle getting conversations
+ *
+ * @since 3.8.29
+ */
+function rfm_direct_get_conversations() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : 'user';
+
+    if (class_exists('RFM_Messages')) {
+        $messages = RFM_Messages::get_instance();
+        $conversations = $messages->get_conversations($user_id, $type);
+
+        wp_send_json_success(array(
+            'conversations' => $conversations
+        ));
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
         ));
     }
     exit;

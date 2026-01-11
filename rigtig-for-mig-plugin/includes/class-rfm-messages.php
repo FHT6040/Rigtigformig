@@ -1,0 +1,326 @@
+<?php
+/**
+ * RFM Messages System
+ *
+ * Handles messaging between users and experts
+ *
+ * @package Rigtig_For_Mig
+ * @since 3.8.29
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class RFM_Messages {
+
+    private static $instance = null;
+
+    public static function get_instance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function __construct() {
+        // AJAX handlers - will be routed through ajax-handler.php
+        // No need for add_action here as ajax-handler.php handles routing
+    }
+
+    /**
+     * Send a message from user to expert
+     *
+     * @param int $sender_id User ID sending the message
+     * @param int $expert_id Expert post ID
+     * @param string $subject Message subject
+     * @param string $message Message content
+     * @return int|false Message ID on success, false on failure
+     */
+    public function send_message($sender_id, $expert_id, $subject, $message) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        // Get expert author ID (recipient)
+        $expert_author_id = get_post_field('post_author', $expert_id);
+
+        if (!$expert_author_id) {
+            return false;
+        }
+
+        $result = $wpdb->insert(
+            $table,
+            array(
+                'sender_id' => $sender_id,
+                'recipient_id' => $expert_author_id,
+                'expert_id' => $expert_id,
+                'subject' => $subject,
+                'message' => $message,
+                'is_read' => 0
+            ),
+            array('%d', '%d', '%d', '%s', '%s', '%d')
+        );
+
+        if ($result) {
+            // Update or create message thread
+            $this->update_thread($sender_id, $expert_id);
+
+            // Trigger action for notifications
+            do_action('rfm_message_sent', $wpdb->insert_id, $sender_id, $expert_author_id, $expert_id);
+
+            return $wpdb->insert_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get messages for a user (inbox)
+     *
+     * @param int $user_id User ID
+     * @param string $box 'inbox' or 'sent'
+     * @param int $limit Number of messages to retrieve
+     * @param int $offset Offset for pagination
+     * @return array Messages
+     */
+    public function get_messages($user_id, $box = 'inbox', $limit = 20, $offset = 0) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        $field = ($box === 'inbox') ? 'recipient_id' : 'sender_id';
+
+        $messages = $wpdb->get_results($wpdb->prepare(
+            "SELECT m.*,
+                    u.display_name as sender_name,
+                    p.post_title as expert_name
+             FROM $table m
+             LEFT JOIN {$wpdb->users} u ON m.sender_id = u.ID
+             LEFT JOIN {$wpdb->posts} p ON m.expert_id = p.ID
+             WHERE m.$field = %d
+             ORDER BY m.created_at DESC
+             LIMIT %d OFFSET %d",
+            $user_id,
+            $limit,
+            $offset
+        ));
+
+        return $messages;
+    }
+
+    /**
+     * Get conversation between user and expert
+     *
+     * @param int $user_id User ID
+     * @param int $expert_id Expert post ID
+     * @return array Messages in the conversation
+     */
+    public function get_conversation($user_id, $expert_id) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        $expert_author_id = get_post_field('post_author', $expert_id);
+
+        $messages = $wpdb->get_results($wpdb->prepare(
+            "SELECT m.*,
+                    u.display_name as sender_name
+             FROM $table m
+             LEFT JOIN {$wpdb->users} u ON m.sender_id = u.ID
+             WHERE m.expert_id = %d
+             AND ((m.sender_id = %d AND m.recipient_id = %d)
+                  OR (m.sender_id = %d AND m.recipient_id = %d))
+             ORDER BY m.created_at ASC",
+            $expert_id,
+            $user_id,
+            $expert_author_id,
+            $expert_author_id,
+            $user_id
+        ));
+
+        return $messages;
+    }
+
+    /**
+     * Mark message as read
+     *
+     * @param int $message_id Message ID
+     * @param int $user_id User ID (to verify ownership)
+     * @return bool Success
+     */
+    public function mark_as_read($message_id, $user_id) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        $result = $wpdb->update(
+            $table,
+            array('is_read' => 1),
+            array(
+                'id' => $message_id,
+                'recipient_id' => $user_id
+            ),
+            array('%d'),
+            array('%d', '%d')
+        );
+
+        return $result !== false;
+    }
+
+    /**
+     * Get unread message count for user
+     *
+     * @param int $user_id User ID
+     * @return int Unread count
+     */
+    public function get_unread_count($user_id) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        $count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table
+             WHERE recipient_id = %d AND is_read = 0",
+            $user_id
+        ));
+
+        return intval($count);
+    }
+
+    /**
+     * Delete a message
+     *
+     * @param int $message_id Message ID
+     * @param int $user_id User ID (to verify ownership)
+     * @return bool Success
+     */
+    public function delete_message($message_id, $user_id) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        // Verify user owns this message (either sender or recipient)
+        $message = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d
+             AND (sender_id = %d OR recipient_id = %d)",
+            $message_id,
+            $user_id,
+            $user_id
+        ));
+
+        if (!$message) {
+            return false;
+        }
+
+        $result = $wpdb->delete(
+            $table,
+            array('id' => $message_id),
+            array('%d')
+        );
+
+        return $result !== false;
+    }
+
+    /**
+     * Update message thread timestamp
+     *
+     * @param int $user_id User ID
+     * @param int $expert_id Expert post ID
+     */
+    private function update_thread($user_id, $expert_id) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('message_threads');
+
+        // Check if thread exists
+        $existing = $wpdb->get_row($wpdb->prepare(
+            "SELECT id FROM $table WHERE user_id = %d AND expert_id = %d",
+            $user_id,
+            $expert_id
+        ));
+
+        if ($existing) {
+            // Update timestamp
+            $wpdb->update(
+                $table,
+                array('last_message_at' => current_time('mysql')),
+                array('id' => $existing->id),
+                array('%s'),
+                array('%d')
+            );
+        } else {
+            // Create new thread
+            $wpdb->insert(
+                $table,
+                array(
+                    'user_id' => $user_id,
+                    'expert_id' => $expert_id,
+                    'last_message_at' => current_time('mysql')
+                ),
+                array('%d', '%d', '%s')
+            );
+        }
+    }
+
+    /**
+     * Get active conversations for a user
+     *
+     * @param int $user_id User ID
+     * @param string $type 'user' or 'expert'
+     * @return array Conversations
+     */
+    public function get_conversations($user_id, $type = 'user') {
+        global $wpdb;
+        $messages_table = RFM_Database::get_table_name('messages');
+
+        if ($type === 'expert') {
+            // For experts: get conversations where they are the recipient
+            $conversations = $wpdb->get_results($wpdb->prepare(
+                "SELECT
+                    m.expert_id,
+                    m.sender_id as user_id,
+                    u.display_name as user_name,
+                    p.post_title as expert_name,
+                    MAX(m.created_at) as last_message_at,
+                    COUNT(CASE WHEN m.is_read = 0 AND m.recipient_id = %d THEN 1 END) as unread_count,
+                    (SELECT message FROM $messages_table
+                     WHERE (sender_id = m.sender_id AND recipient_id = %d AND expert_id = m.expert_id)
+                        OR (sender_id = %d AND recipient_id = m.sender_id AND expert_id = m.expert_id)
+                     ORDER BY created_at DESC LIMIT 1) as last_message
+                FROM $messages_table m
+                LEFT JOIN {$wpdb->users} u ON m.sender_id = u.ID
+                LEFT JOIN {$wpdb->posts} p ON m.expert_id = p.ID
+                WHERE m.recipient_id = %d OR m.sender_id = %d
+                GROUP BY m.expert_id, m.sender_id
+                ORDER BY last_message_at DESC",
+                $user_id,
+                $user_id,
+                $user_id,
+                $user_id,
+                $user_id
+            ));
+        } else {
+            // For users: get conversations where they are the sender
+            $conversations = $wpdb->get_results($wpdb->prepare(
+                "SELECT
+                    m.expert_id,
+                    m.recipient_id as expert_author_id,
+                    u.display_name as expert_user_name,
+                    p.post_title as expert_name,
+                    MAX(m.created_at) as last_message_at,
+                    COUNT(CASE WHEN m.is_read = 0 AND m.recipient_id = %d THEN 1 END) as unread_count,
+                    (SELECT message FROM $messages_table
+                     WHERE (sender_id = %d AND recipient_id = m.recipient_id AND expert_id = m.expert_id)
+                        OR (sender_id = m.recipient_id AND recipient_id = %d AND expert_id = m.expert_id)
+                     ORDER BY created_at DESC LIMIT 1) as last_message
+                FROM $messages_table m
+                LEFT JOIN {$wpdb->users} u ON m.recipient_id = u.ID
+                LEFT JOIN {$wpdb->posts} p ON m.expert_id = p.ID
+                WHERE m.sender_id = %d OR m.recipient_id = %d
+                GROUP BY m.expert_id, m.recipient_id
+                ORDER BY last_message_at DESC",
+                $user_id,
+                $user_id,
+                $user_id,
+                $user_id,
+                $user_id
+            ));
+        }
+
+        return $conversations;
+    }
+}
