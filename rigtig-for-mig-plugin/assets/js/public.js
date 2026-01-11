@@ -630,11 +630,11 @@
         $btn.prop('disabled', true).text('Sender...');
 
         $.ajax({
-            url: rfmPublic.ajaxurl,
+            url: rfmData.ajaxurl,
             type: 'POST',
             data: {
                 action: 'rfm_send_message',
-                nonce: rfmPublic.nonce,
+                nonce: rfmData.nonce,
                 expert_id: expertId,
                 subject: subject,
                 message: message

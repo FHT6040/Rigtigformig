@@ -48,7 +48,7 @@ class RFM_Public {
         );
 
         // Localize script with data
-        wp_localize_script('rfm-public', 'rfmPublic', array(
+        wp_localize_script('rfm-public', 'rfmData', array(
             'ajaxurl' => RFM_PLUGIN_URL . 'ajax-handler.php',
             'nonce' => wp_create_nonce('rfm_nonce'),
             'strings' => array(
