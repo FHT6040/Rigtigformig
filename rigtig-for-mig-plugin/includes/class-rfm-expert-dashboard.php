@@ -443,6 +443,10 @@ class RFM_Expert_Dashboard {
                             <?php echo esc_html($category->name); ?>
                         </button>
                     <?php endforeach; ?>
+                    <button type="button" class="rfm-tab-btn" data-tab="messages">
+                        <i class="dashicons dashicons-email-alt"></i> <?php _e('Beskeder', 'rigtig-for-mig'); ?>
+                        <span class="rfm-unread-count" id="rfm-expert-unread-count" style="display: none;"></span>
+                    </button>
                 </div>
 
                 <!-- Global Message Area -->
@@ -689,6 +693,22 @@ class RFM_Expert_Dashboard {
                     </form>
                 </div>
                 <?php endforeach; ?>
+
+                <!-- Tab Content: Messages -->
+                <div class="rfm-tab-content" data-tab-content="messages">
+                    <div class="rfm-expert-messages-container">
+                        <h3><?php _e('Mine Beskeder', 'rigtig-for-mig'); ?></h3>
+                        <div class="rfm-messages-loading" style="text-align: center; padding: 40px 20px; color: #666;">
+                            <i class="dashicons dashicons-update" style="font-size: 24px; animation: spin 1s linear infinite;"></i>
+                            <p><?php _e('Indlæser beskeder...', 'rigtig-for-mig'); ?></p>
+                        </div>
+                        <div id="rfm-expert-conversations-list" class="rfm-conversations-list" style="display: none;"></div>
+                        <div id="rfm-expert-no-messages" class="rfm-no-messages" style="display: none; text-align: center; padding: 40px 20px; color: #666;">
+                            <i class="dashicons dashicons-email-alt" style="font-size: 48px; opacity: 0.3;"></i>
+                            <p><?php _e('Du har ingen beskeder endnu.', 'rigtig-for-mig'); ?></p>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Education Template for Category Profiles -->
                 <template id="rfm-category-education-template">

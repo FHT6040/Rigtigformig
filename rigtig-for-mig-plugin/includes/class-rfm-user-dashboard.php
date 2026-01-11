@@ -118,6 +118,7 @@ class RFM_User_Dashboard {
             'timestamp' => time(),  // NEW: Current timestamp
             'debug' => defined('WP_DEBUG') && WP_DEBUG,
             'version' => RFM_VERSION,
+            'currentUserId' => get_current_user_id(),
             'strings' => array(
                 'savingText' => __('Gemmer...', 'rigtig-for-mig'),
                 'submitText' => __('Gem ændringer', 'rigtig-for-mig'),
@@ -286,6 +287,43 @@ class RFM_User_Dashboard {
                         </button>
                     </div>
                 </form>
+            </div>
+
+            <!-- Messages Section -->
+            <div class="rfm-dashboard-section rfm-messages-section">
+                <h3>
+                    <?php _e('Mine Beskeder', 'rigtig-for-mig'); ?>
+                    <span class="rfm-unread-count" id="rfm-unread-count" style="display: none;"></span>
+                </h3>
+
+                <div class="rfm-messages-container">
+                    <div class="rfm-messages-loading">
+                        <?php _e('Indlæser beskeder...', 'rigtig-for-mig'); ?>
+                    </div>
+                    <div id="rfm-conversations-list" class="rfm-conversations-list"></div>
+                </div>
+            </div>
+
+            <!-- Message Thread Modal -->
+            <div id="rfm-thread-modal" class="rfm-modal" style="display: none;">
+                <div class="rfm-modal-content rfm-thread-modal-content">
+                    <div class="rfm-modal-header">
+                        <h3 id="rfm-thread-title"></h3>
+                        <span class="rfm-modal-close">&times;</span>
+                    </div>
+                    <div class="rfm-thread-messages" id="rfm-thread-messages"></div>
+                    <form id="rfm-reply-form" class="rfm-reply-form">
+                        <textarea id="rfm-reply-text"
+                                  name="message"
+                                  class="rfm-form-control"
+                                  rows="3"
+                                  placeholder="<?php esc_attr_e('Skriv dit svar...', 'rigtig-for-mig'); ?>"
+                                  required></textarea>
+                        <button type="submit" class="rfm-btn rfm-btn-primary">
+                            <?php _e('Send svar', 'rigtig-for-mig'); ?>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
         <?php

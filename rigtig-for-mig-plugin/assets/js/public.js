@@ -585,5 +585,76 @@
         // Hide remove button
         $(this).hide();
     });
-    
+
+    // ========================================
+    // MESSAGE SYSTEM - Send Message Modal
+    // ========================================
+
+    // Open send message modal
+    $(document).on('click', '#rfm-send-message-btn', function(e) {
+        e.preventDefault();
+        var expertId = $(this).data('expert-id');
+
+        var $modal = $('#rfm-send-message-modal');
+        if ($modal.length > 0) {
+            $modal.data('expert-id', expertId).show();
+        }
+    });
+
+    // Close send message modal
+    $(document).on('click', '#rfm-send-message-modal .rfm-modal-close, #rfm-send-message-modal', function(e) {
+        if (e.target === this) {
+            $('#rfm-send-message-modal').hide();
+            // Clear form
+            $('#rfm-message-subject').val('');
+            $('#rfm-message-text').val('');
+        }
+    });
+
+    // Submit message from expert profile
+    $(document).on('submit', '#rfm-send-message-form', function(e) {
+        e.preventDefault();
+
+        var $form = $(this);
+        var expertId = $('#rfm-send-message-modal').data('expert-id');
+        var subject = $('#rfm-message-subject').val().trim();
+        var message = $('#rfm-message-text').val().trim();
+
+        if (!subject || !message) {
+            alert('Udfyld venligst både emne og besked.');
+            return;
+        }
+
+        var $btn = $form.find('button[type="submit"]');
+        var originalText = $btn.text();
+        $btn.prop('disabled', true).text('Sender...');
+
+        $.ajax({
+            url: rfmPublic.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'rfm_send_message',
+                nonce: rfmPublic.nonce,
+                expert_id: expertId,
+                subject: subject,
+                message: message
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('Din besked er sendt!');
+                    $('#rfm-send-message-modal').hide();
+                    $form[0].reset();
+                } else {
+                    alert('Fejl: ' + (response.data || 'Kunne ikke sende besked'));
+                }
+            },
+            error: function() {
+                alert('Der opstod en fejl. Prøv igen senere.');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text(originalText);
+            }
+        });
+    });
+
 })(jQuery);
