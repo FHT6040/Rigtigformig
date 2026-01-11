@@ -46,9 +46,9 @@ class RFM_Public {
             RFM_VERSION,
             true
         );
-        
+
         // Localize script with data
-        wp_localize_script('rfm-public', 'rfmData', array(
+        wp_localize_script('rfm-public', 'rfmPublic', array(
             'ajaxurl' => RFM_PLUGIN_URL . 'ajax-handler.php',
             'nonce' => wp_create_nonce('rfm_nonce'),
             'strings' => array(
