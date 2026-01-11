@@ -433,34 +433,27 @@ class RFM_Expert_Profile {
                 </div>
             <?php endif; ?>
             
-            <?php 
+            <?php
             // Get languages
             $languages = get_post_meta($expert_id, '_rfm_languages', true);
-            if (!empty($languages) && is_array($languages) && count($languages) > 0): 
-                // Map language codes to native/international names (matching dashboard)
-                $language_map = array(
-                    'dansk' => 'Dansk',
-                    'english' => 'English',
-                    'engelsk' => 'English',
-                    'svenska' => 'Svenska',
-                    'svensk' => 'Svenska',
-                    'norsk' => 'Norsk / Bokmål',
-                    'suomi' => 'Suomi',
-                    'føroyskt' => 'Føroyskt',
-                    'faeroyskt' => 'Føroyskt',
-                    'kalaallisut' => 'Kalaallisut',
-                    'español' => 'Español',
-                    'espanol' => 'Español',
-                    'italiano' => 'Italiano',
-                    'deutsch' => 'Deutsch',
-                    'al-arabiya' => 'العربية (al-arabiya)',
-                    'arabic' => 'العربية (al-arabiya)'
-                );
-                
+            if (!empty($languages) && is_array($languages) && count($languages) > 0):
+                // Get language field labels from flexible fields system
+                $flexible_fields = RFM_Flexible_Fields_System::get_instance();
+                $all_fields = $flexible_fields->get_fields();
+                $language_fields = array();
+                if (isset($all_fields['sprog']) && isset($all_fields['sprog']['fields'])) {
+                    $language_fields = $all_fields['sprog']['fields'];
+                }
+
                 $language_names = array();
                 foreach ($languages as $lang) {
                     $lang_key = strtolower($lang);
-                    $language_names[] = $language_map[$lang_key] ?? ucfirst($lang);
+                    // Use label from flexible fields system if available, otherwise use capitalized key
+                    if (isset($language_fields[$lang_key]['label'])) {
+                        $language_names[] = $language_fields[$lang_key]['label'];
+                    } else {
+                        $language_names[] = ucfirst($lang);
+                    }
                 }
             ?>
                 <div class="rfm-detail-section">

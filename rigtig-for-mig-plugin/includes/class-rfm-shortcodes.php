@@ -290,29 +290,22 @@ class RFM_Shortcodes {
         $languages = get_post_meta($expert_id, '_rfm_languages', true);
         $language_names = array();
         if (!empty($languages) && is_array($languages)) {
-            // Map language codes to native/international names (matching dashboard)
-            $language_map = array(
-                'dansk' => 'Dansk',
-                'english' => 'English',
-                'engelsk' => 'English',
-                'svenska' => 'Svenska',
-                'svensk' => 'Svenska',
-                'norsk' => 'Norsk / Bokmål',
-                'suomi' => 'Suomi',
-                'føroyskt' => 'Føroyskt',
-                'faeroyskt' => 'Føroyskt',
-                'kalaallisut' => 'Kalaallisut',
-                'español' => 'Español',
-                'espanol' => 'Español',
-                'italiano' => 'Italiano',
-                'deutsch' => 'Deutsch',
-                'al-arabiya' => 'العربية (al-arabiya)',
-                'arabic' => 'العربية (al-arabiya)'
-            );
-            
+            // Get language field labels from flexible fields system
+            $flexible_fields = RFM_Flexible_Fields_System::get_instance();
+            $all_fields = $flexible_fields->get_fields();
+            $language_fields = array();
+            if (isset($all_fields['sprog']) && isset($all_fields['sprog']['fields'])) {
+                $language_fields = $all_fields['sprog']['fields'];
+            }
+
             foreach ($languages as $lang) {
                 $lang_key = strtolower($lang);
-                $language_names[] = $language_map[$lang_key] ?? ucfirst($lang);
+                // Use label from flexible fields system if available, otherwise use capitalized key
+                if (isset($language_fields[$lang_key]['label'])) {
+                    $language_names[] = $language_fields[$lang_key]['label'];
+                } else {
+                    $language_names[] = ucfirst($lang);
+                }
             }
         }
         

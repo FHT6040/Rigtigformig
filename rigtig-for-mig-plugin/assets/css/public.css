@@ -1630,30 +1630,6 @@ body.rfm-expert-user.admin-bar {
     color: #111827;
 }
 
-/* Prominent checkmark indicator */
-.rfm-tabbed-dashboard .rfm-category-choice:has(input:checked)::after {
-    content: '✓';
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--cat-color, var(--rfm-primary));
-    animation: checkmarkAppear 0.3s ease;
-}
-
-@keyframes checkmarkAppear {
-    0% {
-        opacity: 0;
-        transform: translateY(-50%) scale(0.5);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(-50%) scale(1);
-    }
-}
-
 .rfm-tabbed-dashboard .rfm-category-choice:has(input:disabled) {
     opacity: 0.4;
     cursor: not-allowed;
