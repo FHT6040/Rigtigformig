@@ -845,9 +845,11 @@ function rfm_direct_submit_rating() {
 function rfm_direct_send_message() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both rfm_nonce and rfm_user_dashboard for compatibility
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
-    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+    $nonce_valid = (!empty($nonce) && (wp_verify_nonce($nonce, 'rfm_nonce') || wp_verify_nonce($nonce, 'rfm_user_dashboard') || wp_verify_nonce($nonce, 'rfm_expert_dashboard')));
+
+    if (!$nonce_valid) {
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
         exit;
     }
@@ -984,9 +986,11 @@ function rfm_direct_send_message() {
 function rfm_direct_get_messages() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both rfm_nonce and rfm_user_dashboard for compatibility
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
-    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+    $nonce_valid = (!empty($nonce) && (wp_verify_nonce($nonce, 'rfm_nonce') || wp_verify_nonce($nonce, 'rfm_user_dashboard') || wp_verify_nonce($nonce, 'rfm_expert_dashboard')));
+
+    if (!$nonce_valid) {
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
         exit;
     }
@@ -1026,9 +1030,11 @@ function rfm_direct_get_messages() {
 function rfm_direct_get_conversation() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both rfm_nonce and rfm_user_dashboard for compatibility
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
-    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+    $nonce_valid = (!empty($nonce) && (wp_verify_nonce($nonce, 'rfm_nonce') || wp_verify_nonce($nonce, 'rfm_user_dashboard') || wp_verify_nonce($nonce, 'rfm_expert_dashboard')));
+
+    if (!$nonce_valid) {
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
         exit;
     }
@@ -1096,9 +1102,11 @@ function rfm_direct_get_conversation() {
 function rfm_direct_mark_message_read() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both rfm_nonce and rfm_user_dashboard for compatibility
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
-    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+    $nonce_valid = (!empty($nonce) && (wp_verify_nonce($nonce, 'rfm_nonce') || wp_verify_nonce($nonce, 'rfm_user_dashboard') || wp_verify_nonce($nonce, 'rfm_expert_dashboard')));
+
+    if (!$nonce_valid) {
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
         exit;
     }
@@ -1149,9 +1157,11 @@ function rfm_direct_mark_message_read() {
 function rfm_direct_delete_message() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both rfm_nonce and rfm_user_dashboard for compatibility
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
-    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+    $nonce_valid = (!empty($nonce) && (wp_verify_nonce($nonce, 'rfm_nonce') || wp_verify_nonce($nonce, 'rfm_user_dashboard') || wp_verify_nonce($nonce, 'rfm_expert_dashboard')));
+
+    if (!$nonce_valid) {
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
         exit;
     }
@@ -1202,9 +1212,11 @@ function rfm_direct_delete_message() {
 function rfm_direct_get_conversations() {
     ob_end_clean();
 
-    // Verify nonce
+    // Verify nonce - accept both rfm_nonce and rfm_user_dashboard for compatibility
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
-    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+    $nonce_valid = (!empty($nonce) && (wp_verify_nonce($nonce, 'rfm_nonce') || wp_verify_nonce($nonce, 'rfm_user_dashboard') || wp_verify_nonce($nonce, 'rfm_expert_dashboard')));
+
+    if (!$nonce_valid) {
         wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
         exit;
     }
