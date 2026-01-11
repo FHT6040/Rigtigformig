@@ -595,16 +595,16 @@
         e.preventDefault();
         var expertId = $(this).data('expert-id');
 
-        var $modal = $('#rfm-send-message-modal');
+        var $modal = $('#rfm-message-modal');
         if ($modal.length > 0) {
             $modal.data('expert-id', expertId).show();
         }
     });
 
     // Close send message modal
-    $(document).on('click', '#rfm-send-message-modal .rfm-modal-close, #rfm-send-message-modal', function(e) {
+    $(document).on('click', '#rfm-message-modal .rfm-modal-close, #rfm-message-modal', function(e) {
         if (e.target === this) {
-            $('#rfm-send-message-modal').hide();
+            $('#rfm-message-modal').hide();
             // Clear form
             $('#rfm-message-subject').val('');
             $('#rfm-message-text').val('');
@@ -612,11 +612,11 @@
     });
 
     // Submit message from expert profile
-    $(document).on('submit', '#rfm-send-message-form', function(e) {
+    $(document).on('submit', '#rfm-message-form', function(e) {
         e.preventDefault();
 
         var $form = $(this);
-        var expertId = $('#rfm-send-message-modal').data('expert-id');
+        var expertId = $('#rfm-message-modal').data('expert-id');
         var subject = $('#rfm-message-subject').val().trim();
         var message = $('#rfm-message-text').val().trim();
 
@@ -642,7 +642,7 @@
             success: function(response) {
                 if (response.success) {
                     alert('Din besked er sendt!');
-                    $('#rfm-send-message-modal').hide();
+                    $('#rfm-message-modal').hide();
                     $form[0].reset();
                 } else {
                     alert('Fejl: ' + (response.data || 'Kunne ikke sende besked'));

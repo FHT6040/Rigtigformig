@@ -2998,25 +2998,25 @@ body.rfm-expert-user.admin-bar {
 }
 
 /* Send Message Form in Modal */
-#rfm-send-message-modal h3 {
+#rfm-message-modal h3 {
     margin-top: 0;
     margin-bottom: 20px;
     color: #2c3e50;
 }
 
-#rfm-send-message-form .rfm-form-field {
+#rfm-message-form .rfm-form-field {
     margin-bottom: 20px;
 }
 
-#rfm-send-message-form label {
+#rfm-message-form label {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
     color: #2c3e50;
 }
 
-#rfm-send-message-form input[type="text"],
-#rfm-send-message-form textarea {
+#rfm-message-form input[type="text"],
+#rfm-message-form textarea {
     width: 100%;
     padding: 10px;
     border: 1px solid #ddd;
@@ -3025,13 +3025,13 @@ body.rfm-expert-user.admin-bar {
     font-size: 14px;
 }
 
-#rfm-send-message-form textarea {
+#rfm-message-form textarea {
     resize: vertical;
     min-height: 120px;
 }
 
-#rfm-send-message-form input[type="text"]:focus,
-#rfm-send-message-form textarea:focus {
+#rfm-message-form input[type="text"]:focus,
+#rfm-message-form textarea:focus {
     outline: none;
     border-color: var(--rfm-primary, #3498db);
     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
