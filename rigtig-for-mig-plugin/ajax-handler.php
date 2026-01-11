@@ -860,9 +860,10 @@ function rfm_direct_send_message() {
     }
 
     $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+    $recipient_id = isset($_POST['recipient_id']) ? intval($_POST['recipient_id']) : 0;
     $subject = isset($_POST['subject']) ? sanitize_text_field($_POST['subject']) : '';
     $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
-    $user_id = get_current_user_id();
+    $sender_id = get_current_user_id();
 
     // Validate
     if (!$expert_id || empty($message)) {
@@ -880,12 +881,84 @@ function rfm_direct_send_message() {
         exit;
     }
 
-    // Send message using Messages class
-    if (class_exists('RFM_Messages')) {
-        $messages = RFM_Messages::get_instance();
-        $message_id = $messages->send_message($user_id, $expert_id, $subject, $message);
+    // Determine recipient
+    // If recipient_id is provided (expert replying to user), use it
+    // Otherwise, get expert author ID (user sending to expert)
+    if (!$recipient_id) {
+        $recipient_id = get_post_field('post_author', $expert_id);
+        if (!$recipient_id) {
+            wp_send_json_error(array(
+                'message' => __('Modtager ikke fundet.', 'rigtig-for-mig')
+            ));
+            exit;
+        }
+    }
 
-        if ($message_id) {
+    // Prevent sending message to self
+    if ($sender_id == $recipient_id) {
+        wp_send_json_error(array(
+            'message' => __('Du kan ikke sende en besked til dig selv.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    // Send message directly using database
+    if (class_exists('RFM_Messages')) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        $result = $wpdb->insert(
+            $table,
+            array(
+                'sender_id' => $sender_id,
+                'recipient_id' => $recipient_id,
+                'expert_id' => $expert_id,
+                'subject' => $subject,
+                'message' => $message,
+                'is_read' => 0
+            ),
+            array('%d', '%d', '%d', '%s', '%s', '%d')
+        );
+
+        if ($result) {
+            $message_id = $wpdb->insert_id;
+
+            // Update thread
+            // Determine the user_id for the thread (always the non-expert user)
+            $expert_author = get_post_field('post_author', $expert_id);
+            $thread_user_id = ($sender_id == $expert_author) ? $recipient_id : $sender_id;
+
+            // Update thread timestamp
+            $threads_table = RFM_Database::get_table_name('message_threads');
+            $existing_thread = $wpdb->get_row($wpdb->prepare(
+                "SELECT id FROM $threads_table WHERE user_id = %d AND expert_id = %d",
+                $thread_user_id,
+                $expert_id
+            ));
+
+            if ($existing_thread) {
+                $wpdb->update(
+                    $threads_table,
+                    array('last_message_at' => current_time('mysql')),
+                    array('id' => $existing_thread->id),
+                    array('%s'),
+                    array('%d')
+                );
+            } else {
+                $wpdb->insert(
+                    $threads_table,
+                    array(
+                        'user_id' => $thread_user_id,
+                        'expert_id' => $expert_id,
+                        'last_message_at' => current_time('mysql')
+                    ),
+                    array('%d', '%d', '%s')
+                );
+            }
+
+            // Trigger notification action
+            do_action('rfm_message_sent', $message_id, $sender_id, $recipient_id, $expert_id);
+
             wp_send_json_success(array(
                 'message' => __('Din besked er sendt!', 'rigtig-for-mig'),
                 'message_id' => $message_id
@@ -967,8 +1040,14 @@ function rfm_direct_get_conversation() {
         exit;
     }
 
-    $user_id = get_current_user_id();
+    $current_user_id = get_current_user_id();
     $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+    $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+
+    // If user_id is not provided, use current user (for regular users viewing their own conversations)
+    if (!$user_id) {
+        $user_id = $current_user_id;
+    }
 
     if (!$expert_id) {
         wp_send_json_error(array(
@@ -977,12 +1056,29 @@ function rfm_direct_get_conversation() {
         exit;
     }
 
+    // Security check: verify user is authorized to view this conversation
+    // Either they are the user in the conversation, or they are the expert
+    $expert_author_id = get_post_field('post_author', $expert_id);
+    if ($current_user_id != $user_id && $current_user_id != $expert_author_id) {
+        wp_send_json_error(array(
+            'message' => __('Du har ikke adgang til denne samtale.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
     if (class_exists('RFM_Messages')) {
         $messages = RFM_Messages::get_instance();
         $conversation = $messages->get_conversation($user_id, $expert_id);
 
+        // Mark messages as read for the current user
+        foreach ($conversation as $message) {
+            if ($message->recipient_id == $current_user_id && $message->is_read == 0) {
+                $messages->mark_as_read($message->id, $current_user_id);
+            }
+        }
+
         wp_send_json_success(array(
-            'conversation' => $conversation
+            'messages' => $conversation
         ));
     } else {
         wp_send_json_error(array(
@@ -1126,9 +1222,11 @@ function rfm_direct_get_conversations() {
     if (class_exists('RFM_Messages')) {
         $messages = RFM_Messages::get_instance();
         $conversations = $messages->get_conversations($user_id, $type);
+        $unread_count = $messages->get_unread_count($user_id);
 
         wp_send_json_success(array(
-            'conversations' => $conversations
+            'conversations' => $conversations,
+            'unread_count' => $unread_count
         ));
     } else {
         wp_send_json_error(array(
