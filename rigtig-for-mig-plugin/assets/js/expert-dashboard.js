@@ -144,7 +144,7 @@
         console.log('Category checkboxes: Natural behavior with smart feedback');
 
         // CRITICAL: Remove any event handlers from other scripts (public.js, etc.)
-        // Use setTimeout to ensure this runs AFTER other scripts have initialized
+        // Wait for all other scripts to initialize, then protect checkbox states
         setTimeout(function() {
             var $categoryContainer = $('#rfm-tabbed-categories');
             if ($categoryContainer.length) {
@@ -155,13 +155,21 @@
                 console.log('Initializing category selection...');
                 console.log('Found ' + $categoryCheckboxes.length + ' checkboxes, limit: ' + maxCategories);
 
-                // SAVE INITIAL CHECKED STATES FROM PHP
-                // This is the "truth" we need to preserve
+                // SAVE INITIAL CHECKED STATES FROM PHP HTML ATTRIBUTE
+                // Use defaultChecked to read the ORIGINAL HTML checked attribute set by PHP
+                // This bypasses any JavaScript manipulation that may have occurred
                 var initialCheckedStates = {};
                 $categoryCheckboxes.each(function() {
                     var $cb = $(this);
                     var id = $cb.val();
-                    initialCheckedStates[id] = $cb.is(':checked');
+                    // Read from HTML attribute, not JavaScript state
+                    initialCheckedStates[id] = $cb.prop('defaultChecked');
+
+                    // IMMEDIATELY restore if JavaScript state differs from HTML
+                    if ($cb.prop('defaultChecked') !== $cb.prop('checked')) {
+                        console.log('⚡ IMMEDIATELY RESTORING checkbox ' + id + ' to match HTML attribute');
+                        $cb.prop('checked', $cb.prop('defaultChecked'));
+                    }
                 });
 
                 // DEBUG: Log initial checkbox states as rendered by PHP
