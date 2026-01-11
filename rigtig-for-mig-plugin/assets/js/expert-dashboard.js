@@ -74,9 +74,10 @@
                     if (response.success) {
                         $message.html('<div class="rfm-success">' + response.data.message + '</div>');
                         setTimeout(function() {
-                            // Force reload bypassing cache
-                            var cacheBuster = '?_=' + new Date().getTime();
-                            window.location.href = window.location.pathname + window.location.search + cacheBuster;
+                            // Force reload bypassing cache with proper URL construction
+                            var currentUrl = new URL(window.location.href);
+                            currentUrl.searchParams.set('_', new Date().getTime());
+                            window.location.href = currentUrl.toString();
                         }, 1000);
                     } else {
                         $message.html('<div class="rfm-error">' + response.data.message + '</div>');

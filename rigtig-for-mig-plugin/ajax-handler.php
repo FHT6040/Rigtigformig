@@ -73,6 +73,10 @@ require_once $wp_load_path;
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('X-Content-Type-Options: nosniff');
+// LiteSpeed Cache specific headers
+header('X-LiteSpeed-Cache-Control: no-cache');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Prevent any HTML output
 ob_start();
@@ -394,6 +398,11 @@ function rfm_direct_save_general_profile() {
         } else {
             error_log("RFM SUCCESS: Set terms result: " . print_r($result, true));
         }
+
+        // CRITICAL: Clear WordPress object cache to ensure fresh data on page reload
+        clean_object_term_cache($expert_id, 'rfm_expert');
+        wp_cache_delete($expert_id, 'rfm_expert_terms');
+        wp_cache_delete('rfm_category_relationships_' . $expert_id);
 
         // Verify what was actually saved
         $saved_terms = wp_get_object_terms($expert_id, 'rfm_category', array('fields' => 'ids'));

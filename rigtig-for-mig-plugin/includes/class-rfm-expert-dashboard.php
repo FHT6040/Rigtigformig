@@ -290,6 +290,14 @@ class RFM_Expert_Dashboard {
      * @since 3.5.0
      */
     public function tabbed_dashboard_shortcode($atts) {
+        // Prevent caching of dashboard page to ensure fresh category data
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('X-LiteSpeed-Cache-Control: no-cache');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+
         if (!is_user_logged_in()) {
             return '<p>' . __('Du skal være logget ind for at se dit dashboard.', 'rigtig-for-mig') . ' <a href="' . wp_login_url(get_permalink()) . '">' . __('Log ind', 'rigtig-for-mig') . '</a></p>';
         }
@@ -326,7 +334,8 @@ class RFM_Expert_Dashboard {
             $languages = array();
         }
 
-        // Get expert's current categories
+        // Get expert's current categories (force fresh data, bypass cache)
+        clean_object_term_cache($expert_id, 'rfm_expert');
         $expert_categories = wp_get_object_terms($expert_id, 'rfm_category', array('fields' => 'all'));
         if (is_wp_error($expert_categories)) {
             $expert_categories = array();
