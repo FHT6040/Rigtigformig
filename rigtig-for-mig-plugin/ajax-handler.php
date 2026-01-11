@@ -120,6 +120,10 @@ switch ($action) {
         rfm_direct_unified_login();
         break;
 
+    case 'rfm_submit_rating':
+        rfm_direct_submit_rating();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -680,5 +684,131 @@ function rfm_direct_unified_login() {
         'message' => 'Du er nu logget ind!',
         'redirect' => $redirect
     ));
+    exit;
+}
+
+/**
+ * Handle rating submission
+ *
+ * @since 3.8.27
+ */
+function rfm_direct_submit_rating() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind for at bedømme en ekspert.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+    $rating = isset($_POST['rating']) ? intval($_POST['rating']) : 0;
+    $review = isset($_POST['review']) ? sanitize_textarea_field($_POST['review']) : '';
+    $user_id = get_current_user_id();
+
+    // Validate
+    if (!$expert_id || !$rating || $rating < 1 || $rating > 5) {
+        wp_send_json_error(array(
+            'message' => __('Ugyldig bedømmelse.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    // Check if post exists and is an expert
+    if (get_post_type($expert_id) !== 'rfm_expert') {
+        wp_send_json_error(array(
+            'message' => __('Ekspert ikke fundet.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    // Prevent self-rating
+    if (get_post_field('post_author', $expert_id) == $user_id) {
+        wp_send_json_error(array(
+            'message' => __('Du kan ikke bedømme din egen profil.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    global $wpdb;
+    $table = RFM_Database::get_table_name('ratings');
+
+    // Check if user has already rated this expert
+    $existing = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, created_at FROM $table WHERE expert_id = %d AND user_id = %d",
+        $expert_id,
+        $user_id
+    ));
+
+    if ($existing) {
+        // Check 180-day cooldown
+        $days_since_rating = floor((time() - strtotime($existing->created_at)) / (60 * 60 * 24));
+
+        if ($days_since_rating < 180) {
+            $days_remaining = 180 - $days_since_rating;
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    __('Du kan først bedømme denne ekspert igen om %d dage. Du anmeldte sidst for %d dage siden.', 'rigtig-for-mig'),
+                    $days_remaining,
+                    $days_since_rating
+                )
+            ));
+            exit;
+        }
+
+        // Update existing rating (after 180 days)
+        $result = $wpdb->update(
+            $table,
+            array(
+                'rating' => $rating,
+                'review' => $review,
+                'created_at' => current_time('mysql')
+            ),
+            array(
+                'expert_id' => $expert_id,
+                'user_id' => $user_id
+            ),
+            array('%d', '%s', '%s'),
+            array('%d', '%d')
+        );
+    } else {
+        // Insert new rating
+        $result = $wpdb->insert(
+            $table,
+            array(
+                'expert_id' => $expert_id,
+                'user_id' => $user_id,
+                'rating' => $rating,
+                'review' => $review
+            ),
+            array('%d', '%d', '%d', '%s')
+        );
+    }
+
+    if ($result !== false) {
+        // Update average rating using RFM_Ratings class
+        if (class_exists('RFM_Ratings')) {
+            $ratings_instance = RFM_Ratings::get_instance();
+            $ratings_instance->update_average_rating($expert_id);
+        }
+
+        do_action('rfm_rating_submitted', $expert_id, $user_id, $rating);
+
+        wp_send_json_success(array(
+            'message' => __('Din bedømmelse er indsendt!', 'rigtig-for-mig')
+        ));
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Der opstod en fejl. Prøv venligst igen.', 'rigtig-for-mig')
+        ));
+    }
     exit;
 }
