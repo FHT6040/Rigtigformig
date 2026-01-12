@@ -120,12 +120,16 @@ class RFM_Ratings {
                 array('%d', '%d', '%d', '%s')
             );
         }
-        
+
         if ($result !== false) {
+            // Get rating ID
+            $rating_id = $existing ? $existing->id : $wpdb->insert_id;
+
             // Update average rating
             $this->update_average_rating($expert_id);
-            
+
             do_action('rfm_rating_submitted', $expert_id, $user_id, $rating);
+            do_action('rfm_rating_created', $rating_id, $expert_id, $user_id);
             
             wp_send_json_success(array(
                 'message' => __('Tak for din bedømmelse!', 'rigtig-for-mig'),

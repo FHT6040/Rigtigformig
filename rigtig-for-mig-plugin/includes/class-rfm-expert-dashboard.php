@@ -699,6 +699,11 @@ class RFM_Expert_Dashboard {
                 <div class="rfm-tab-content" data-tab-content="messages">
                     <div class="rfm-expert-messages-container">
                         <h3><?php _e('Mine Beskeder', 'rigtig-for-mig'); ?></h3>
+                        <div class="rfm-messages-actions" style="margin-bottom: 15px;">
+                            <button id="rfm-expert-mark-all-read-btn" class="rfm-btn rfm-btn-secondary" style="display: none;">
+                                <?php _e('Marker alle som læst', 'rigtig-for-mig'); ?>
+                            </button>
+                        </div>
                         <div class="rfm-messages-loading" style="text-align: center; padding: 40px 20px; color: #666;">
                             <i class="dashicons dashicons-update" style="font-size: 24px; animation: spin 1s linear infinite;"></i>
                             <p><?php _e('Indlæser beskeder...', 'rigtig-for-mig'); ?></p>

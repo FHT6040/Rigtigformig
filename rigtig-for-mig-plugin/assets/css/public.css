@@ -2880,6 +2880,65 @@ body.rfm-expert-user.admin-bar {
     font-size: 12px;
 }
 
+/* Collapsed Message List */
+.rfm-message-count {
+    color: #666;
+    font-size: 13px;
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+.rfm-conv-messages-collapsed {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-left: 3px solid #e0e0e0;
+    border-radius: 4px;
+}
+
+.rfm-msg-preview {
+    color: #666;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 4px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rfm-msg-preview:first-child {
+    margin-top: 0;
+}
+
+.rfm-msg-preview:last-child {
+    margin-bottom: 0;
+}
+
+.rfm-view-thread-btn,
+.rfm-view-thread-btn-expert {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: var(--rfm-primary, #3498db);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.rfm-view-thread-btn:hover,
+.rfm-view-thread-btn-expert:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.rfm-conversation-item {
+    cursor: default;
+}
+
 /* Messages Container in Expert Dashboard */
 .rfm-expert-messages-container {
     padding: 20px 0;

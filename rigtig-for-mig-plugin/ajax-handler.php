@@ -140,6 +140,10 @@ switch ($action) {
         rfm_direct_mark_message_read();
         break;
 
+    case 'rfm_mark_all_messages_read':
+        rfm_direct_mark_all_messages_read();
+        break;
+
     case 'rfm_delete_message':
         rfm_direct_delete_message();
         break;
@@ -1155,6 +1159,54 @@ function rfm_direct_mark_message_read() {
         } else {
             wp_send_json_error(array(
                 'message' => __('Kunne ikke markere besked som læst.', 'rigtig-for-mig')
+            ));
+        }
+    } else {
+        wp_send_json_error(array(
+            'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
+        ));
+    }
+    exit;
+}
+
+/**
+ * Handle marking all messages as read for a user
+ *
+ * @since 3.8.38
+ */
+function rfm_direct_mark_all_messages_read() {
+    ob_end_clean();
+
+    // Verify nonce - accept both rfm_nonce and rfm_user_dashboard and rfm_expert_dashboard for compatibility
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    $nonce_valid = (!empty($nonce) && (wp_verify_nonce($nonce, 'rfm_nonce') || wp_verify_nonce($nonce, 'rfm_user_dashboard') || wp_verify_nonce($nonce, 'rfm_expert_dashboard')));
+
+    if (!$nonce_valid) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array(
+            'message' => __('Du skal være logget ind.', 'rigtig-for-mig')
+        ));
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+
+    if (class_exists('RFM_Messages')) {
+        $messages = RFM_Messages::get_instance();
+        $success = $messages->mark_all_as_read($user_id);
+
+        if ($success) {
+            wp_send_json_success(array(
+                'message' => __('Alle beskeder markeret som læst.', 'rigtig-for-mig'),
+                'unread_count' => 0
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => __('Kunne ikke markere alle beskeder som læst.', 'rigtig-for-mig')
             ));
         }
     } else {

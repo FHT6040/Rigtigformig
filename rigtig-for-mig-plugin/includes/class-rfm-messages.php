@@ -217,6 +217,27 @@ class RFM_Messages {
     }
 
     /**
+     * Mark all messages as read for a user
+     *
+     * @param int $user_id User ID
+     * @return bool Success
+     */
+    public function mark_all_as_read($user_id) {
+        global $wpdb;
+        $table = RFM_Database::get_table_name('messages');
+
+        $result = $wpdb->update(
+            $table,
+            array('is_read' => 1),
+            array('recipient_id' => $user_id, 'is_read' => 0),
+            array('%d'),
+            array('%d', '%d')
+        );
+
+        return $result !== false;
+    }
+
+    /**
      * Update message thread timestamp
      *
      * @param int $user_id User ID
@@ -293,6 +314,25 @@ class RFM_Messages {
                 $user_id,
                 $user_id
             ));
+
+            // Attach all messages to each conversation
+            foreach ($conversations as &$conv) {
+                $conv->messages = $wpdb->get_results($wpdb->prepare(
+                    "SELECT m.*, u.display_name as sender_name
+                     FROM $messages_table m
+                     LEFT JOIN {$wpdb->users} u ON m.sender_id = u.ID
+                     WHERE m.expert_id = %d
+                     AND ((m.sender_id = %d AND m.recipient_id = %d)
+                          OR (m.sender_id = %d AND m.recipient_id = %d))
+                     ORDER BY m.created_at ASC",
+                    $conv->expert_id,
+                    $conv->user_id,
+                    $user_id,
+                    $user_id,
+                    $conv->user_id
+                ));
+                $conv->message_count = count($conv->messages);
+            }
         } else {
             // For users: get conversations where they are the sender
             $conversations = $wpdb->get_results($wpdb->prepare(
@@ -319,6 +359,26 @@ class RFM_Messages {
                 $user_id,
                 $user_id
             ));
+
+            // Attach all messages to each conversation
+            foreach ($conversations as &$conv) {
+                $expert_author_id = get_post_field('post_author', $conv->expert_id);
+                $conv->messages = $wpdb->get_results($wpdb->prepare(
+                    "SELECT m.*, u.display_name as sender_name
+                     FROM $messages_table m
+                     LEFT JOIN {$wpdb->users} u ON m.sender_id = u.ID
+                     WHERE m.expert_id = %d
+                     AND ((m.sender_id = %d AND m.recipient_id = %d)
+                          OR (m.sender_id = %d AND m.recipient_id = %d))
+                     ORDER BY m.created_at ASC",
+                    $conv->expert_id,
+                    $user_id,
+                    $expert_author_id,
+                    $expert_author_id,
+                    $user_id
+                ));
+                $conv->message_count = count($conv->messages);
+            }
         }
 
         return $conversations;

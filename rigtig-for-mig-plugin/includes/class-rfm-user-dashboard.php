@@ -296,6 +296,12 @@ class RFM_User_Dashboard {
                     <span class="rfm-unread-count" id="rfm-unread-count" style="display: none;"></span>
                 </h3>
 
+                <div class="rfm-messages-actions" style="margin-bottom: 15px;">
+                    <button id="rfm-mark-all-read-btn" class="rfm-btn rfm-btn-secondary" style="display: none;">
+                        <?php _e('Marker alle som læst', 'rigtig-for-mig'); ?>
+                    </button>
+                </div>
+
                 <div class="rfm-messages-container">
                     <div class="rfm-messages-loading">
                         <?php _e('Indlæser beskeder...', 'rigtig-for-mig'); ?>
