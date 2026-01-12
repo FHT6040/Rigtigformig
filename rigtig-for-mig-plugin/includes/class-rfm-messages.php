@@ -289,30 +289,74 @@ class RFM_Messages {
         $messages_table = RFM_Database::get_table_name('messages');
 
         if ($type === 'expert') {
-            // For experts: get conversations where they are the recipient
+            // For experts: get all conversations grouped by expert_id and the OTHER user
+            // Use CASE to identify the counterpart user (the other person in the conversation)
             $conversations = $wpdb->get_results($wpdb->prepare(
                 "SELECT
-                    m.expert_id,
-                    m.sender_id as user_id,
+                    conv.expert_id,
+                    conv.counterpart_user_id as user_id,
                     u.display_name as user_name,
                     p.post_title as expert_name,
-                    MAX(m.created_at) as last_message_at,
-                    COUNT(CASE WHEN m.is_read = 0 AND m.recipient_id = %d THEN 1 END) as unread_count,
-                    (SELECT message FROM $messages_table
-                     WHERE (sender_id = m.sender_id AND recipient_id = %d AND expert_id = m.expert_id)
-                        OR (sender_id = %d AND recipient_id = m.sender_id AND expert_id = m.expert_id)
-                     ORDER BY created_at DESC LIMIT 1) as last_message
-                FROM $messages_table m
-                LEFT JOIN {$wpdb->users} u ON m.sender_id = u.ID
-                LEFT JOIN {$wpdb->posts} p ON m.expert_id = p.ID
-                WHERE m.recipient_id = %d OR m.sender_id = %d
-                GROUP BY m.expert_id, m.sender_id
-                ORDER BY last_message_at DESC",
-                $user_id,
-                $user_id,
-                $user_id,
-                $user_id,
-                $user_id
+                    conv.last_message_at,
+                    conv.unread_count,
+                    last_msg.message as last_message
+                FROM (
+                    SELECT
+                        m.expert_id,
+                        CASE
+                            WHEN m.sender_id = %d THEN m.recipient_id
+                            ELSE m.sender_id
+                        END as counterpart_user_id,
+                        MAX(m.created_at) as last_message_at,
+                        SUM(CASE WHEN m.is_read = 0 AND m.recipient_id = %d THEN 1 ELSE 0 END) as unread_count
+                    FROM $messages_table m
+                    WHERE m.sender_id = %d OR m.recipient_id = %d
+                    GROUP BY m.expert_id, CASE WHEN m.sender_id = %d THEN m.recipient_id ELSE m.sender_id END
+                ) as conv
+                LEFT JOIN {$wpdb->users} u ON conv.counterpart_user_id = u.ID
+                LEFT JOIN {$wpdb->posts} p ON conv.expert_id = p.ID
+                LEFT OUTER JOIN (
+                    SELECT
+                        m2.expert_id,
+                        CASE
+                            WHEN m2.sender_id = %d THEN m2.recipient_id
+                            ELSE m2.sender_id
+                        END as counterpart_user_id,
+                        m2.message
+                    FROM $messages_table m2
+                    INNER JOIN (
+                        SELECT
+                            m3.expert_id,
+                            CASE
+                                WHEN m3.sender_id = %d THEN m3.recipient_id
+                                ELSE m3.sender_id
+                            END as counterpart_user_id,
+                            MAX(m3.created_at) as max_created_at
+                        FROM $messages_table m3
+                        WHERE m3.sender_id = %d OR m3.recipient_id = %d
+                        GROUP BY m3.expert_id, counterpart_user_id
+                    ) latest ON m2.expert_id = latest.expert_id
+                        AND CASE
+                            WHEN m2.sender_id = %d THEN m2.recipient_id
+                            ELSE m2.sender_id
+                        END = latest.counterpart_user_id
+                        AND m2.created_at = latest.max_created_at
+                    WHERE m2.sender_id = %d OR m2.recipient_id = %d
+                ) last_msg ON conv.expert_id = last_msg.expert_id
+                    AND conv.counterpart_user_id = last_msg.counterpart_user_id
+                ORDER BY conv.last_message_at DESC",
+                $user_id, // CASE sender check
+                $user_id, // unread count
+                $user_id, // WHERE sender
+                $user_id, // WHERE recipient
+                $user_id, // GROUP BY CASE sender check
+                $user_id, // last message CASE
+                $user_id, // last message CASE inner
+                $user_id, // last message WHERE
+                $user_id, // last message WHERE
+                $user_id, // last message CASE join
+                $user_id, // last message WHERE
+                $user_id  // last message WHERE
             ));
 
             // Attach all messages to each conversation
@@ -334,30 +378,72 @@ class RFM_Messages {
                 $conv->message_count = count($conv->messages);
             }
         } else {
-            // For users: get conversations where they are the sender
+            // For users: get all conversations grouped by expert_id
+            // The counterpart is always the expert's author
             $conversations = $wpdb->get_results($wpdb->prepare(
                 "SELECT
-                    m.expert_id,
-                    m.recipient_id as expert_author_id,
-                    u.display_name as expert_user_name,
+                    conv.expert_id,
+                    conv.counterpart_user_id as expert_author_id,
                     p.post_title as expert_name,
-                    MAX(m.created_at) as last_message_at,
-                    COUNT(CASE WHEN m.is_read = 0 AND m.recipient_id = %d THEN 1 END) as unread_count,
-                    (SELECT message FROM $messages_table
-                     WHERE (sender_id = %d AND recipient_id = m.recipient_id AND expert_id = m.expert_id)
-                        OR (sender_id = m.recipient_id AND recipient_id = %d AND expert_id = m.expert_id)
-                     ORDER BY created_at DESC LIMIT 1) as last_message
-                FROM $messages_table m
-                LEFT JOIN {$wpdb->users} u ON m.recipient_id = u.ID
-                LEFT JOIN {$wpdb->posts} p ON m.expert_id = p.ID
-                WHERE m.sender_id = %d OR m.recipient_id = %d
-                GROUP BY m.expert_id, m.recipient_id
-                ORDER BY last_message_at DESC",
-                $user_id,
-                $user_id,
-                $user_id,
-                $user_id,
-                $user_id
+                    conv.last_message_at,
+                    conv.unread_count,
+                    last_msg.message as last_message
+                FROM (
+                    SELECT
+                        m.expert_id,
+                        CASE
+                            WHEN m.sender_id = %d THEN m.recipient_id
+                            ELSE m.sender_id
+                        END as counterpart_user_id,
+                        MAX(m.created_at) as last_message_at,
+                        SUM(CASE WHEN m.is_read = 0 AND m.recipient_id = %d THEN 1 ELSE 0 END) as unread_count
+                    FROM $messages_table m
+                    WHERE m.sender_id = %d OR m.recipient_id = %d
+                    GROUP BY m.expert_id, CASE WHEN m.sender_id = %d THEN m.recipient_id ELSE m.sender_id END
+                ) as conv
+                LEFT JOIN {$wpdb->posts} p ON conv.expert_id = p.ID
+                LEFT OUTER JOIN (
+                    SELECT
+                        m2.expert_id,
+                        CASE
+                            WHEN m2.sender_id = %d THEN m2.recipient_id
+                            ELSE m2.sender_id
+                        END as counterpart_user_id,
+                        m2.message
+                    FROM $messages_table m2
+                    INNER JOIN (
+                        SELECT
+                            m3.expert_id,
+                            CASE
+                                WHEN m3.sender_id = %d THEN m3.recipient_id
+                                ELSE m3.sender_id
+                            END as counterpart_user_id,
+                            MAX(m3.created_at) as max_created_at
+                        FROM $messages_table m3
+                        WHERE m3.sender_id = %d OR m3.recipient_id = %d
+                        GROUP BY m3.expert_id, counterpart_user_id
+                    ) latest ON m2.expert_id = latest.expert_id
+                        AND CASE
+                            WHEN m2.sender_id = %d THEN m2.recipient_id
+                            ELSE m2.sender_id
+                        END = latest.counterpart_user_id
+                        AND m2.created_at = latest.max_created_at
+                    WHERE m2.sender_id = %d OR m2.recipient_id = %d
+                ) last_msg ON conv.expert_id = last_msg.expert_id
+                    AND conv.counterpart_user_id = last_msg.counterpart_user_id
+                ORDER BY conv.last_message_at DESC",
+                $user_id, // CASE sender check
+                $user_id, // unread count
+                $user_id, // WHERE sender
+                $user_id, // WHERE recipient
+                $user_id, // GROUP BY CASE sender check
+                $user_id, // last message CASE
+                $user_id, // last message CASE inner
+                $user_id, // last message WHERE
+                $user_id, // last message WHERE
+                $user_id, // last message CASE join
+                $user_id, // last message WHERE
+                $user_id  // last message WHERE
             ));
 
             // Attach all messages to each conversation
