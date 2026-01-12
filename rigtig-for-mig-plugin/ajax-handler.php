@@ -265,10 +265,26 @@ function rfm_direct_upload_user_avatar() {
 
     $file = $_FILES['avatar_image'];
 
-    // Validate file type
+    // Validate file type - SECURITY: Check actual file content, not just browser-supplied MIME type
     $allowed_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
-    if (!in_array($file['type'], $allowed_types)) {
-        wp_send_json_error(array('message' => 'Ugyldig filtype. Kun JPG, PNG, GIF og WebP er tilladt.'));
+
+    // Check actual MIME type from file content (more secure than $_FILES['type'])
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $real_mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    if (!in_array($real_mime, $allowed_types)) {
+        wp_send_json_error(array('message' => 'Ugyldig filtype. Kun billeder (JPG, PNG, GIF, WebP) er tilladt.'));
+        exit;
+    }
+
+    // Additional security: Validate file extension
+    $filename = sanitize_file_name($file['name']);
+    $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    $allowed_exts = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+
+    if (!in_array($file_ext, $allowed_exts)) {
+        wp_send_json_error(array('message' => 'Ugyldig fil-extension. Kun .jpg, .png, .gif og .webp er tilladt.'));
         exit;
     }
 
