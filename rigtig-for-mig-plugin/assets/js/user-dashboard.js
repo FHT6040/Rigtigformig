@@ -311,8 +311,11 @@
         }
 
         function loadUserConversations() {
+            var $loadingDiv = $('.rfm-messages-loading');
             var $list = $('#rfm-conversations-list');
-            $list.html('<p style="text-align: center; padding: 20px;">Indlæser beskeder...</p>');
+
+            $loadingDiv.show();
+            $list.hide().empty();
 
             $.ajax({
                 url: rfmUserDashboard.ajaxurl,
@@ -323,8 +326,11 @@
                     type: 'user'
                 },
                 success: function(response) {
+                    $loadingDiv.hide();
+
                     if (response.success && response.data.conversations && response.data.conversations.length > 0) {
                         displayUserConversations(response.data.conversations);
+                        $list.show();
 
                         // Update unread count and show/hide mark all as read button
                         if (response.data.unread_count > 0) {
@@ -335,12 +341,13 @@
                             $('#rfm-mark-all-read-btn').hide();
                         }
                     } else {
-                        $list.html('<p style="text-align: center; padding: 40px 20px; color: #666;">Du har ingen beskeder endnu.</p>');
+                        $list.html('<p style="text-align: center; padding: 40px 20px; color: #666;">Du har ingen beskeder endnu.</p>').show();
                         $('#rfm-mark-all-read-btn').hide();
                     }
                 },
                 error: function() {
-                    $list.html('<p style="color: #e74c3c;">Der opstod en fejl. Prøv igen senere.</p>');
+                    $loadingDiv.hide();
+                    $list.html('<p style="color: #e74c3c;">Der opstod en fejl. Prøv igen senere.</p>').show();
                 }
             });
         }

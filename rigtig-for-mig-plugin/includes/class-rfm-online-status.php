@@ -53,19 +53,27 @@ class RFM_Online_Status {
      */
     public function track_user_activity() {
         if (!is_user_logged_in()) {
+            rfm_log("Online Status: Not logged in, skipping activity tracking");
             return;
         }
-        
+
         $user_id = get_current_user_id();
         $user = get_userdata($user_id);
-        
+
         // Track both expert users AND regular users
         if (!$user || (!in_array('rfm_expert_user', (array) $user->roles) && !in_array('rfm_user', (array) $user->roles))) {
+            if ($user) {
+                rfm_log("Online Status: User ID $user_id has roles: " . implode(', ', $user->roles) . " - not tracking");
+            } else {
+                rfm_log("Online Status: User data not found for ID $user_id");
+            }
             return;
         }
-        
+
         // Update last active timestamp
-        update_user_meta($user_id, '_rfm_last_active', current_time('timestamp'));
+        $timestamp = current_time('timestamp');
+        update_user_meta($user_id, '_rfm_last_active', $timestamp);
+        rfm_log("Online Status: Updated activity for user ID $user_id - timestamp: $timestamp (" . date('Y-m-d H:i:s', $timestamp) . ")");
     }
     
     /**
@@ -74,17 +82,22 @@ class RFM_Online_Status {
     public function ajax_heartbeat() {
         // Verify nonce
         if (!wp_verify_nonce($_POST['nonce'] ?? '', 'rfm_heartbeat_nonce')) {
+            rfm_log("Online Status HEARTBEAT: Nonce verification failed");
             wp_send_json_error(['message' => 'Invalid nonce']);
         }
-        
+
         if (!is_user_logged_in()) {
+            rfm_log("Online Status HEARTBEAT: Not logged in");
             wp_send_json_error(['message' => 'Not logged in']);
         }
-        
+
         $user_id = get_current_user_id();
-        update_user_meta($user_id, '_rfm_last_active', current_time('timestamp'));
-        
-        wp_send_json_success(['message' => 'Activity tracked', 'timestamp' => current_time('timestamp')]);
+        $timestamp = current_time('timestamp');
+        update_user_meta($user_id, '_rfm_last_active', $timestamp);
+
+        rfm_log("Online Status HEARTBEAT: User ID $user_id - heartbeat received, updated timestamp to $timestamp (" . date('Y-m-d H:i:s', $timestamp) . ")");
+
+        wp_send_json_success(['message' => 'Activity tracked', 'timestamp' => $timestamp]);
     }
     
     /**
@@ -94,14 +107,18 @@ class RFM_Online_Status {
         if (!is_user_logged_in()) {
             return;
         }
-        
+
         $user = wp_get_current_user();
-        
+        $user_id = $user->ID;
+
         // For both expert users and regular users
         if (!in_array('rfm_expert_user', (array) $user->roles) && !in_array('rfm_user', (array) $user->roles)) {
+            rfm_log("Online Status SCRIPT: User ID $user_id has roles: " . implode(', ', $user->roles) . " - not adding heartbeat script");
             return;
         }
-        
+
+        rfm_log("Online Status SCRIPT: Adding heartbeat script for user ID $user_id with roles: " . implode(', ', $user->roles));
+
         $nonce = wp_create_nonce('rfm_heartbeat_nonce');
         $ajax_url = admin_url('admin-ajax.php');
         ?>
@@ -109,19 +126,34 @@ class RFM_Online_Status {
         (function() {
             var rfmHeartbeatNonce = '<?php echo esc_js($nonce); ?>';
             var rfmAjaxUrl = '<?php echo esc_js($ajax_url); ?>';
-            
+
+            console.log('RFM Online Status: Heartbeat script loaded for user ID <?php echo $user_id; ?>');
+
             function rfmSendHeartbeat() {
+                console.log('RFM Online Status: Sending heartbeat...');
                 var xhr = new XMLHttpRequest();
                 xhr.open('POST', rfmAjaxUrl, true);
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        console.log('RFM Online Status: Heartbeat response:', xhr.responseText);
+                    } else {
+                        console.error('RFM Online Status: Heartbeat failed with status:', xhr.status);
+                    }
+                };
+                xhr.onerror = function() {
+                    console.error('RFM Online Status: Heartbeat request error');
+                };
                 xhr.send('action=rfm_heartbeat&nonce=' + encodeURIComponent(rfmHeartbeatNonce));
             }
-            
+
             // Send heartbeat immediately on page load
+            console.log('RFM Online Status: Sending initial heartbeat on page load');
             rfmSendHeartbeat();
-            
+
             // Send heartbeat every 5 minutes (300000ms)
             setInterval(rfmSendHeartbeat, 300000);
+            console.log('RFM Online Status: Heartbeat interval set to 5 minutes');
             
             // Also send on visibility change (when user returns to tab)
             document.addEventListener('visibilitychange', function() {
@@ -190,20 +222,29 @@ class RFM_Online_Status {
     
     /**
      * Check if a user is online
-     * 
+     *
      * @param int $user_id WordPress user ID
      * @return bool True if online, false if offline
      */
     public function is_user_online($user_id) {
         $last_active = get_user_meta($user_id, '_rfm_last_active', true);
-        
+
         if (empty($last_active)) {
+            rfm_log("Online Status CHECK: User ID $user_id has NO _rfm_last_active value - marked as OFFLINE");
             return false;
         }
-        
-        $threshold = current_time('timestamp') - (self::ONLINE_THRESHOLD_MINUTES * 60);
-        
-        return ($last_active > $threshold);
+
+        $current = current_time('timestamp');
+        $threshold = $current - (self::ONLINE_THRESHOLD_MINUTES * 60);
+        $is_online = ($last_active > $threshold);
+
+        $last_active_date = date('Y-m-d H:i:s', $last_active);
+        $threshold_date = date('Y-m-d H:i:s', $threshold);
+        $minutes_ago = round(($current - $last_active) / 60, 1);
+
+        rfm_log("Online Status CHECK: User ID $user_id - Last active: $last_active_date ($minutes_ago min ago), Threshold: $threshold_date, Status: " . ($is_online ? 'ONLINE' : 'OFFLINE'));
+
+        return $is_online;
     }
     
     /**
