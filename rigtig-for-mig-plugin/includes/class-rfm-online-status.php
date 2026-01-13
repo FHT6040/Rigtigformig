@@ -120,7 +120,8 @@ class RFM_Online_Status {
         rfm_log("Online Status SCRIPT: Adding heartbeat script for user ID $user_id with roles: " . implode(', ', $user->roles));
 
         $nonce = wp_create_nonce('rfm_heartbeat_nonce');
-        $ajax_url = admin_url('admin-ajax.php');
+        $ajax_url = RFM_PLUGIN_URL . 'ajax-handler.php';  // Use custom ajax-handler.php instead of admin-ajax.php
+        rfm_log("Online Status SCRIPT: Using AJAX URL: $ajax_url");
         ?>
         <script type="text/javascript">
         (function() {

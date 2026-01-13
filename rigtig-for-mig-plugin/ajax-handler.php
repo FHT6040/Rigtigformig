@@ -152,6 +152,10 @@ switch ($action) {
         rfm_direct_get_conversations();
         break;
 
+    case 'rfm_heartbeat':
+        rfm_direct_heartbeat();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -1313,5 +1317,41 @@ function rfm_direct_get_conversations() {
             'message' => __('Besked systemet er ikke tilgængeligt.', 'rigtig-for-mig')
         ));
     }
+    exit;
+}
+
+/**
+ * Handle online status heartbeat from frontend
+ *
+ * @since 3.8.41
+ */
+function rfm_direct_heartbeat() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (!wp_verify_nonce($nonce, 'rfm_heartbeat_nonce')) {
+        rfm_log("Online Status HEARTBEAT (ajax-handler): Nonce verification failed");
+        wp_send_json_error(array('message' => 'Invalid nonce'));
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        rfm_log("Online Status HEARTBEAT (ajax-handler): Not logged in");
+        wp_send_json_error(array('message' => 'Not logged in'));
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $timestamp = current_time('timestamp');
+    update_user_meta($user_id, '_rfm_last_active', $timestamp);
+
+    rfm_log("Online Status HEARTBEAT (ajax-handler): User ID $user_id - heartbeat received via ajax-handler.php, updated timestamp to $timestamp (" . date('Y-m-d H:i:s', $timestamp) . ")");
+
+    wp_send_json_success(array(
+        'message' => 'Activity tracked',
+        'timestamp' => $timestamp,
+        'user_id' => $user_id
+    ));
     exit;
 }
