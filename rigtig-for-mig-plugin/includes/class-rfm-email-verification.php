@@ -433,24 +433,28 @@ Med venlig hilsen,
      * Get verified users count
      * Consistent with storage format
      *
+     * v3.8.42: Simplified logic to match admin page - use get_users() instead of raw SQL
+     *
      * @return int Number of verified users
      */
     public static function get_verified_users_count() {
-        global $wpdb;
+        // Get all users with rfm_user role
+        $users = get_users(array(
+            'role' => 'rfm_user',
+            'fields' => 'ID'
+        ));
 
-        return (int) $wpdb->get_var("
-            SELECT COUNT(DISTINCT u.ID)
-            FROM {$wpdb->users} u
-            INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
-            WHERE um.meta_key = 'rfm_email_verified'
-            AND um.meta_value IN ('1', 1)
-            AND EXISTS (
-                SELECT 1 FROM {$wpdb->usermeta} um2
-                WHERE um2.user_id = u.ID
-                AND um2.meta_key = 'wp_capabilities'
-                AND um2.meta_value LIKE '%rfm_user%'
-            )
-        ");
+        // Count how many are verified
+        $verified_count = 0;
+        foreach ($users as $user_id) {
+            if (self::is_user_verified($user_id)) {
+                $verified_count++;
+            }
+        }
+
+        rfm_log("RFM STATS: get_verified_users_count() - Total rfm_user users: " . count($users) . ", Verified: $verified_count");
+
+        return $verified_count;
     }
 
     /**
