@@ -95,28 +95,28 @@ class RFM_Admin {
     /**
      * Add admin menu
      *
-     * v3.9.0: Restructured menu (Option B) - removed Dashboard, added Eksperter with stats
+     * v3.9.0: Restructured menu (Option B) - cleaner navigation
      */
     public function add_admin_menu() {
-        // Main menu page - redirects to Eksperter
+        // Main menu page - redirect to Brugere
         add_menu_page(
             __('Rigtig for mig', 'rigtig-for-mig'),
             __('Rigtig for mig', 'rigtig-for-mig'),
             'manage_options',
             'rfm-dashboard',
-            array($this, 'render_experts_page'),
+            array($this, 'render_redirect_to_users'),
             'dashicons-groups',
             6
         );
 
-        // Eksperter submenu - shows expert list with statistics at top
+        // Brugere submenu
         add_submenu_page(
             'rfm-dashboard',
-            __('Eksperter', 'rigtig-for-mig'),
-            __('Eksperter', 'rigtig-for-mig'),
+            __('Brugere', 'rigtig-for-mig'),
+            __('Brugere', 'rigtig-for-mig'),
             'manage_options',
-            'rfm-dashboard',
-            array($this, 'render_experts_page')
+            'rfm-users',
+            array(RFM_User_Admin::get_instance(), 'render_users_page')
         );
 
         // Indstillinger submenu
@@ -138,21 +138,37 @@ class RFM_Admin {
             'rfm-tools',
             array($this, 'render_tools_page')
         );
+
+        // Add statistics to Eksperter post type page
+        add_action('all_admin_notices', array($this, 'add_expert_statistics'));
     }
     
     /**
-     * Render experts page with statistics at top
+     * Redirect to Brugere page
      *
-     * v3.9.0: Replaced dashboard with experts list + stats (Option B)
+     * v3.9.0: Main menu redirects to Brugere
      */
-    public function render_experts_page() {
+    public function render_redirect_to_users() {
+        wp_redirect(admin_url('admin.php?page=rfm-users'));
+        exit;
+    }
+
+    /**
+     * Add expert statistics to post type list page
+     *
+     * v3.9.0: Show statistics at top of Eksperter post type page
+     */
+    public function add_expert_statistics() {
         global $wpdb;
+        $screen = get_current_screen();
+
+        // Only show on rfm_expert list page
+        if (!$screen || $screen->post_type !== 'rfm_expert' || $screen->base !== 'edit') {
+            return;
+        }
 
         // Get statistics
         $total_experts = wp_count_posts('rfm_expert')->publish;
-        $draft_experts = wp_count_posts('rfm_expert')->draft;
-        $pending_experts = wp_count_posts('rfm_expert')->pending;
-
         $premium_experts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_rfm_subscription_plan' AND meta_value = 'premium'");
         $standard_experts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_rfm_subscription_plan' AND meta_value = 'standard'");
 
@@ -162,9 +178,7 @@ class RFM_Admin {
 
         ?>
         <div class="wrap">
-            <h1><?php _e('Eksperter', 'rigtig-for-mig'); ?></h1>
-
-            <div class="rfm-dashboard-stats">
+            <div class="rfm-dashboard-stats" style="margin: 20px 0;">
                 <div class="rfm-stat-box">
                     <h3><?php echo number_format($total_experts); ?></h3>
                     <p><?php _e('Total Eksperter', 'rigtig-for-mig'); ?></p>
@@ -188,72 +202,6 @@ class RFM_Admin {
                     <p><?php _e('Online Nu', 'rigtig-for-mig'); ?></p>
                 </div>
             </div>
-
-            <h2><?php _e('Alle Eksperter', 'rigtig-for-mig'); ?></h2>
-
-            <p>
-                <a href="<?php echo admin_url('edit.php?post_type=rfm_expert'); ?>" class="button button-primary">
-                    <?php _e('Se ekspertliste', 'rigtig-for-mig'); ?>
-                </a>
-                <a href="<?php echo admin_url('post-new.php?post_type=rfm_expert'); ?>" class="button">
-                    <?php _e('Tilføj ny ekspert', 'rigtig-for-mig'); ?>
-                </a>
-            </p>
-
-            <h2><?php _e('Seneste Eksperter', 'rigtig-for-mig'); ?></h2>
-            <?php
-            $recent_experts = get_posts(array(
-                'post_type' => 'rfm_expert',
-                'post_status' => array('publish', 'draft', 'pending'),
-                'posts_per_page' => 10,
-                'orderby' => 'date',
-                'order' => 'DESC'
-            ));
-
-            if ($recent_experts): ?>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th style="width: 40px;"><?php _e('Status', 'rigtig-for-mig'); ?></th>
-                            <th><?php _e('Navn', 'rigtig-for-mig'); ?></th>
-                            <th><?php _e('Email', 'rigtig-for-mig'); ?></th>
-                            <th><?php _e('Plan', 'rigtig-for-mig'); ?></th>
-                            <th><?php _e('Rating', 'rigtig-for-mig'); ?></th>
-                            <th><?php _e('Verificeret', 'rigtig-for-mig'); ?></th>
-                            <th><?php _e('Sidst aktiv', 'rigtig-for-mig'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($recent_experts as $expert): ?>
-                            <tr>
-                                <td><?php echo $online_status->render_status_indicator($expert->ID, false); ?></td>
-                                <td>
-                                    <a href="<?php echo get_edit_post_link($expert->ID); ?>">
-                                        <strong><?php echo get_the_title($expert->ID); ?></strong>
-                                    </a><br>
-                                    <small><?php echo ucfirst($expert->post_status); ?></small>
-                                </td>
-                                <td><?php echo get_post_meta($expert->ID, '_rfm_email', true); ?></td>
-                                <td><?php echo ucfirst(get_post_meta($expert->ID, '_rfm_subscription_plan', true) ?: 'free'); ?></td>
-                                <td><?php echo number_format(RFM_Ratings::get_instance()->get_average_rating($expert->ID), 1); ?> ★</td>
-                                <td>
-                                    <?php
-                                    $verified = get_post_meta($expert->ID, '_rfm_email_verified', true);
-                                    if ($verified) {
-                                        echo '<span style="color: green;">✓ Ja</span>';
-                                    } else {
-                                        echo '<span style="color: orange;">⏳ Afventende</span>';
-                                    }
-                                    ?>
-                                </td>
-                                <td><?php echo $online_status->get_last_active_time($expert->ID); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <p><?php _e('Ingen eksperter fundet.', 'rigtig-for-mig'); ?></p>
-            <?php endif; ?>
         </div>
         <?php
     }
@@ -261,23 +209,30 @@ class RFM_Admin {
     /**
      * Render tools page
      *
-     * v3.9.0: New tools page with links to Profil Felter and Bulk Import
+     * v3.9.0: Tools overview page with links to submenu items
      */
     public function render_tools_page() {
         ?>
         <div class="wrap">
             <h1><?php _e('Værktøjer', 'rigtig-for-mig'); ?></h1>
+            <p><?php _e('Vælg et værktøj fra menuen til venstre.', 'rigtig-for-mig'); ?></p>
 
-            <div class="card">
-                <h2><?php _e('Profil Felter', 'rigtig-for-mig'); ?></h2>
-                <p><?php _e('Administrer custom fields til ekspert profiler.', 'rigtig-for-mig'); ?></p>
-                <p><em><?php _e('Kommer snart...', 'rigtig-for-mig'); ?></em></p>
-            </div>
-
-            <div class="card">
-                <h2><?php _e('Bulk Import', 'rigtig-for-mig'); ?></h2>
-                <p><?php _e('Importer flere eksperter ad gangen via CSV.', 'rigtig-for-mig'); ?></p>
-                <p><em><?php _e('Kommer snart...', 'rigtig-for-mig'); ?></em></p>
+            <div class="card" style="max-width: 600px;">
+                <h2><?php _e('Tilgængelige værktøjer', 'rigtig-for-mig'); ?></h2>
+                <ul style="list-style: disc; margin-left: 20px; line-height: 2;">
+                    <li>
+                        <a href="<?php echo admin_url('admin.php?page=rfm-fields'); ?>">
+                            <strong><?php _e('Profil Felter', 'rigtig-for-mig'); ?></strong>
+                        </a>
+                        - <?php _e('Administrer custom fields til ekspert profiler', 'rigtig-for-mig'); ?>
+                    </li>
+                    <li>
+                        <a href="<?php echo admin_url('admin.php?page=rfm-bulk-import'); ?>">
+                            <strong><?php _e('Bulk Import', 'rigtig-for-mig'); ?></strong>
+                        </a>
+                        - <?php _e('Importer flere eksperter ad gangen via CSV', 'rigtig-for-mig'); ?>
+                    </li>
+                </ul>
             </div>
         </div>
         <?php

@@ -72,10 +72,12 @@ class RFM_Flexible_Fields_System {
     
     /**
      * Enqueue admin scripts and styles
+     *
+     * v3.9.0: Updated hook name after moving to Værktøjer
      */
     public function enqueue_admin_scripts($hook) {
         // Only load on our admin page
-        if ($hook !== 'rigtig-for-mig_page_rfm-field-manager') {
+        if ($hook !== 'rigtig-for-mig_page_rfm-fields') {
             return;
         }
         
@@ -95,14 +97,16 @@ class RFM_Flexible_Fields_System {
     
     /**
      * Add admin menu for field management
+     *
+     * v3.9.0: Moved under Værktøjer submenu
      */
     public function add_admin_menu() {
         add_submenu_page(
-            'rfm-dashboard',
+            'rfm-tools',
             'Profil Felter',
             'Profil Felter',
             'manage_options',
-            'rfm-field-manager',
+            'rfm-fields',
             [$this, 'render_admin_page']
         );
     }
