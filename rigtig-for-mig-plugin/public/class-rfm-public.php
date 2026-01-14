@@ -179,7 +179,7 @@ class RFM_Public {
         global $wpdb;
 
         // Get all experts with coordinates
-        $experts_with_coords = $wpdb->get_results($wpdb->prepare("
+        $experts_with_coords = $wpdb->get_results("
             SELECT
                 p.ID,
                 lat.meta_value AS latitude,
@@ -191,7 +191,7 @@ class RFM_Public {
             AND p.post_status = 'publish'
             AND lat.meta_value != ''
             AND lng.meta_value != ''
-        "));
+        ");
 
         $expert_ids = array();
         $expert_distances = array();
