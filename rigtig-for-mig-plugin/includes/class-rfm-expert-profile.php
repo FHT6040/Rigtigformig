@@ -53,7 +53,8 @@ class RFM_Expert_Profile {
         $profile_content .= $content;
         $profile_content .= $this->get_profile_details($expert_id);
         $profile_content .= $this->get_ratings_section($expert_id);
-        
+        $profile_content .= $this->get_message_modal($expert_id);
+
         return $profile_content;
     }
     
@@ -167,12 +168,13 @@ class RFM_Expert_Profile {
                     </div>
                     
                     <?php
-                    // Show logout and dashboard buttons if viewing own profile
+                    // Show different actions based on user status
                     if (is_user_logged_in()) {
                         $current_user = wp_get_current_user();
                         $post_author = get_post_field('post_author', $expert_id);
-                        
+
                         if ($current_user->ID == $post_author && in_array('rfm_expert_user', (array) $current_user->roles)) {
+                            // Show dashboard and logout for expert viewing own profile
                             ?>
                             <div class="rfm-profile-actions">
                                 <a href="<?php echo home_url('/ekspert-dashboard/'); ?>" class="rfm-btn rfm-btn-secondary">
@@ -185,7 +187,29 @@ class RFM_Expert_Profile {
                                 </a>
                             </div>
                             <?php
+                        } else {
+                            // Show "Send Message" button for other logged-in users
+                            ?>
+                            <div class="rfm-profile-actions">
+                                <button type="button" id="rfm-send-message-btn" class="rfm-btn rfm-btn-primary" data-expert-id="<?php echo esc_attr($expert_id); ?>">
+                                    <i class="dashicons dashicons-email-alt"></i>
+                                    <?php _e('Send besked', 'rigtig-for-mig'); ?>
+                                </button>
+                            </div>
+                            <?php
                         }
+                    } else {
+                        // Show login prompt for non-logged-in users
+                        ?>
+                        <div class="rfm-profile-actions">
+                            <p class="rfm-login-prompt">
+                                <?php _e('Log ind for at sende en besked til denne ekspert', 'rigtig-for-mig'); ?>
+                                <a href="<?php echo wp_login_url(get_permalink()); ?>" class="rfm-btn rfm-btn-secondary">
+                                    <?php _e('Log ind', 'rigtig-for-mig'); ?>
+                                </a>
+                            </p>
+                        </div>
+                        <?php
                     }
                     ?>
                 </div>
@@ -433,34 +457,27 @@ class RFM_Expert_Profile {
                 </div>
             <?php endif; ?>
             
-            <?php 
+            <?php
             // Get languages
             $languages = get_post_meta($expert_id, '_rfm_languages', true);
-            if (!empty($languages) && is_array($languages) && count($languages) > 0): 
-                // Map language codes to native/international names (matching dashboard)
-                $language_map = array(
-                    'dansk' => 'Dansk',
-                    'english' => 'English',
-                    'engelsk' => 'English',
-                    'svenska' => 'Svenska',
-                    'svensk' => 'Svenska',
-                    'norsk' => 'Norsk / Bokmål',
-                    'suomi' => 'Suomi',
-                    'føroyskt' => 'Føroyskt',
-                    'faeroyskt' => 'Føroyskt',
-                    'kalaallisut' => 'Kalaallisut',
-                    'español' => 'Español',
-                    'espanol' => 'Español',
-                    'italiano' => 'Italiano',
-                    'deutsch' => 'Deutsch',
-                    'al-arabiya' => 'العربية (al-arabiya)',
-                    'arabic' => 'العربية (al-arabiya)'
-                );
-                
+            if (!empty($languages) && is_array($languages) && count($languages) > 0):
+                // Get language field labels from flexible fields system
+                $flexible_fields = RFM_Flexible_Fields_System::get_instance();
+                $all_fields = $flexible_fields->get_fields();
+                $language_fields = array();
+                if (isset($all_fields['sprog']) && isset($all_fields['sprog']['fields'])) {
+                    $language_fields = $all_fields['sprog']['fields'];
+                }
+
                 $language_names = array();
                 foreach ($languages as $lang) {
                     $lang_key = strtolower($lang);
-                    $language_names[] = $language_map[$lang_key] ?? ucfirst($lang);
+                    // Use label from flexible fields system if available, otherwise use capitalized key
+                    if (isset($language_fields[$lang_key]['label'])) {
+                        $language_names[] = $language_fields[$lang_key]['label'];
+                    } else {
+                        $language_names[] = ucfirst($lang);
+                    }
                 }
             ?>
                 <div class="rfm-detail-section">
@@ -525,6 +542,71 @@ class RFM_Expert_Profile {
                 <?php else: ?>
                     <p><?php _e('Ingen bedømmelser endnu.', 'rigtig-for-mig'); ?></p>
                 <?php endif; ?>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Get message modal HTML
+     */
+    private function get_message_modal($expert_id) {
+        // Only show modal if user is logged in and not viewing own profile
+        if (!is_user_logged_in()) {
+            return '';
+        }
+
+        $current_user = wp_get_current_user();
+        $post_author = get_post_field('post_author', $expert_id);
+
+        if ($current_user->ID == $post_author) {
+            return '';
+        }
+
+        $expert_name = get_the_title($expert_id);
+
+        ob_start();
+        ?>
+        <!-- Message Modal -->
+        <div id="rfm-message-modal" class="rfm-modal" style="display: none;">
+            <div class="rfm-modal-content">
+                <span class="rfm-modal-close">&times;</span>
+                <h3><?php printf(__('Send besked til %s', 'rigtig-for-mig'), esc_html($expert_name)); ?></h3>
+
+                <form id="rfm-message-form" data-expert-id="<?php echo esc_attr($expert_id); ?>">
+                    <div class="rfm-form-group">
+                        <label for="rfm-message-subject"><?php _e('Emne', 'rigtig-for-mig'); ?></label>
+                        <input type="text"
+                               id="rfm-message-subject"
+                               name="subject"
+                               class="rfm-form-control"
+                               placeholder="<?php esc_attr_e('Hvad drejer beskeden sig om?', 'rigtig-for-mig'); ?>"
+                               required>
+                    </div>
+
+                    <div class="rfm-form-group">
+                        <label for="rfm-message-text"><?php _e('Besked', 'rigtig-for-mig'); ?> *</label>
+                        <textarea id="rfm-message-text"
+                                  name="message"
+                                  class="rfm-form-control"
+                                  rows="6"
+                                  placeholder="<?php esc_attr_e('Skriv din besked her...', 'rigtig-for-mig'); ?>"
+                                  required></textarea>
+                    </div>
+
+                    <div id="rfm-message-form-message"></div>
+
+                    <div class="rfm-form-actions">
+                        <button type="button" class="rfm-btn rfm-btn-secondary rfm-modal-close">
+                            <?php _e('Annuller', 'rigtig-for-mig'); ?>
+                        </button>
+                        <button type="submit" class="rfm-btn rfm-btn-primary">
+                            <i class="dashicons dashicons-email-alt"></i>
+                            <?php _e('Send besked', 'rigtig-for-mig'); ?>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
         <?php

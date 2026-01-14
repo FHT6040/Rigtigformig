@@ -30,10 +30,12 @@ class RFM_Bulk_Import {
     
     /**
      * Add admin menu page
+     *
+     * v3.9.0: Moved under Værktøjer submenu
      */
     public static function add_admin_menu() {
         add_submenu_page(
-            'rfm-dashboard',
+            'rfm-tools',
             __('Bulk Import Specialiseringer', 'rigtig-for-mig'),
             __('Bulk Import', 'rigtig-for-mig'),
             'manage_options',

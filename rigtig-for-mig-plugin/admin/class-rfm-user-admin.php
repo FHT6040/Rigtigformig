@@ -93,8 +93,14 @@ class RFM_User_Admin {
     
     /**
      * Add admin menu for users
+     *
+     * v3.9.0: Removed duplicate "Alle Brugere" menu
      */
     public function add_user_admin_menu() {
+        // Remove "Alle Brugere" if it exists
+        remove_submenu_page('rfm-dashboard', 'rfm-all-users');
+
+        // Add Brugere menu (this should be the only one)
         add_submenu_page(
             'rfm-dashboard',
             __('Brugere', 'rigtig-for-mig'),

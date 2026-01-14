@@ -300,6 +300,269 @@
                 }
             });
         });
+
+        // ========================================
+        // MESSAGE SYSTEM HANDLERS
+        // ========================================
+
+        // Load user conversations on page load
+        if ($('#rfm-conversations-list').length > 0) {
+            loadUserConversations();
+        }
+
+        function loadUserConversations() {
+            var $loadingDiv = $('.rfm-messages-loading');
+            var $list = $('#rfm-conversations-list');
+
+            $loadingDiv.show();
+            $list.hide().empty();
+
+            $.ajax({
+                url: rfmUserDashboard.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_get_conversations',
+                    nonce: rfmUserDashboard.nonce,
+                    type: 'user'
+                },
+                success: function(response) {
+                    $loadingDiv.hide();
+
+                    if (response.success && response.data.conversations && response.data.conversations.length > 0) {
+                        displayUserConversations(response.data.conversations);
+                        $list.show();
+
+                        // Update unread count and show/hide mark all as read button
+                        if (response.data.unread_count > 0) {
+                            $('#rfm-unread-count').text(response.data.unread_count).show();
+                            $('#rfm-mark-all-read-btn').show();
+                        } else {
+                            $('#rfm-unread-count').hide();
+                            $('#rfm-mark-all-read-btn').hide();
+                        }
+                    } else {
+                        $list.html('<p style="text-align: center; padding: 40px 20px; color: #666;">Du har ingen beskeder endnu.</p>').show();
+                        $('#rfm-mark-all-read-btn').hide();
+                    }
+                },
+                error: function() {
+                    $loadingDiv.hide();
+                    $list.html('<p style="color: #e74c3c;">Der opstod en fejl. Prøv igen senere.</p>').show();
+                }
+            });
+        }
+
+        function displayUserConversations(conversations) {
+            var $list = $('#rfm-conversations-list');
+            $list.empty();
+
+            conversations.forEach(function(conv) {
+                var unreadBadge = conv.unread_count > 0
+                    ? '<span class="rfm-unread-badge">' + conv.unread_count + '</span>'
+                    : '';
+
+                var messageCount = conv.message_count > 1
+                    ? '<span class="rfm-message-count">(' + conv.message_count + ' beskeder)</span>'
+                    : '<span class="rfm-message-count">(1 besked)</span>';
+
+                // Build collapsed message list
+                var messagesHTML = '';
+                if (conv.messages && conv.messages.length > 0) {
+                    messagesHTML = '<div class="rfm-conv-messages-collapsed">';
+                    conv.messages.forEach(function(msg, index) {
+                        var msgPreview = msg.message.length > 60 ? msg.message.substring(0, 60) + '...' : msg.message;
+                        var msgClass = index === conv.messages.length - 1 ? 'rfm-msg-preview-last' : 'rfm-msg-preview';
+                        messagesHTML += '<div class="' + msgClass + '">' +
+                            '↳ ' + msgPreview + ' <span class="rfm-msg-date-inline">(' + msg.created_at + ')</span>' +
+                        '</div>';
+                    });
+                    messagesHTML += '</div>';
+                }
+
+                var $convItem = $('<div class="rfm-conversation-item" data-expert-id="' + conv.expert_id + '">' +
+                    '<div class="rfm-conv-header">' +
+                        '<strong>📧 ' + conv.expert_name + '</strong>' +
+                        unreadBadge +
+                        ' ' + messageCount +
+                    '</div>' +
+                    messagesHTML +
+                    '<button class="rfm-btn rfm-btn-small rfm-view-thread-btn" data-expert-id="' + conv.expert_id + '">' +
+                        'Klik for at se hele samtalen' +
+                    '</button>' +
+                '</div>');
+
+                $list.append($convItem);
+            });
+        }
+
+        // Open conversation thread when button is clicked
+        $(document).on('click', '.rfm-view-thread-btn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var expertId = $(this).data('expert-id');
+            openUserConversationThread(expertId);
+        });
+
+        function openUserConversationThread(expertId) {
+            var $modal = $('#rfm-thread-modal');
+            var $messages = $('#rfm-thread-messages');
+
+            if ($modal.length === 0) return;
+
+            $messages.html('<p style="text-align: center; padding: 20px;">Indlæser samtale...</p>');
+            $modal.show();
+
+            $.ajax({
+                url: rfmUserDashboard.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_get_conversation',
+                    nonce: rfmUserDashboard.nonce,
+                    expert_id: expertId
+                },
+                success: function(response) {
+                    if (response.success && response.data.messages) {
+                        displayUserThread(response.data.messages, expertId);
+                        // Refresh conversations to update unread badges
+                        loadUserConversations();
+                        // Update unread count in header
+                        updateUnreadCount();
+                    } else {
+                        $messages.html('<p style="color: #e74c3c;">Kunne ikke indlæse beskeder.</p>');
+                    }
+                }
+            });
+        }
+
+        function displayUserThread(messages, expertId) {
+            var $messages = $('#rfm-thread-messages');
+            $messages.empty();
+
+            var currentUserId = rfmUserDashboard.currentUserId;
+
+            messages.forEach(function(msg) {
+                var isSent = msg.sender_id == currentUserId;
+                var msgClass = isSent ? 'rfm-msg-sent' : 'rfm-msg-received';
+
+                var $msg = $('<div class="rfm-message ' + msgClass + '">' +
+                    '<div class="rfm-msg-sender"><strong>' + msg.sender_name + '</strong></div>' +
+                    '<div class="rfm-msg-content">' + msg.message + '</div>' +
+                    '<div class="rfm-msg-date">' + msg.created_at + '</div>' +
+                '</div>');
+
+                $messages.append($msg);
+            });
+
+            // Scroll to bottom
+            $messages.scrollTop($messages[0].scrollHeight);
+
+            // Store expertId for reply
+            $('#rfm-reply-form').data('expert-id', expertId);
+        }
+
+        // Update unread count badge
+        function updateUnreadCount() {
+            $.ajax({
+                url: rfmUserDashboard.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_get_unread_count',
+                    nonce: rfmUserDashboard.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var count = response.data.count;
+                        if (count > 0) {
+                            $('#rfm-unread-count').text(count).show();
+                            $('#rfm-mark-all-read-btn').show();
+                        } else {
+                            $('#rfm-unread-count').hide();
+                            $('#rfm-mark-all-read-btn').hide();
+                        }
+                    }
+                }
+            });
+        }
+
+        // Mark all messages as read button handler
+        $(document).on('click', '#rfm-mark-all-read-btn', function(e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Markerer...');
+
+            $.ajax({
+                url: rfmUserDashboard.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_mark_all_messages_read',
+                    nonce: rfmUserDashboard.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Update UI
+                        $('#rfm-unread-count').hide();
+                        $btn.hide();
+                        // Refresh conversation list to remove unread badges
+                        loadUserConversations();
+                    } else {
+                        alert(response.data.message || 'Der opstod en fejl');
+                        $btn.prop('disabled', false).text('Marker alle som læst');
+                    }
+                },
+                error: function() {
+                    alert('Der opstod en fejl. Prøv igen senere.');
+                    $btn.prop('disabled', false).text('Marker alle som læst');
+                }
+            });
+        });
+
+        // Close thread modal
+        $(document).on('click', '#rfm-thread-modal .rfm-modal-close, #rfm-thread-modal', function(e) {
+            if (e.target === this) {
+                $('#rfm-thread-modal').hide();
+            }
+        });
+
+        // Send user reply
+        $(document).on('submit', '#rfm-reply-form', function(e) {
+            e.preventDefault();
+
+            var $form = $(this);
+            var expertId = $form.data('expert-id');
+            var message = $('#rfm-reply-text').val().trim();
+
+            if (!message) return;
+
+            var $btn = $form.find('button[type="submit"]');
+            $btn.prop('disabled', true).text('Sender...');
+
+            $.ajax({
+                url: rfmUserDashboard.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_send_message',
+                    nonce: rfmUserDashboard.nonce,
+                    expert_id: expertId,
+                    subject: 'Svar',
+                    message: message
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#rfm-reply-text').val('');
+                        // Reload conversation
+                        openUserConversationThread(expertId);
+                        // Reload conversations list
+                        loadUserConversations();
+                    } else {
+                        alert('Fejl: ' + (response.data || 'Kunne ikke sende besked'));
+                    }
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Send svar');
+                }
+            });
+        });
     });
 
 })(jQuery);

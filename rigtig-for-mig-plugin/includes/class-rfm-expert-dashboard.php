@@ -61,6 +61,7 @@ class RFM_Expert_Dashboard {
         // Localize script with translations and data
         wp_localize_script('rfm-expert-dashboard', 'rfmDashboard', array(
             'ajaxurl' => RFM_PLUGIN_URL . 'ajax-handler.php',  // Direct AJAX handler
+            'nonce' => wp_create_nonce('rfm_expert_dashboard'),
             'strings' => array(
                 'savingText' => __('Gemmer...', 'rigtig-for-mig'),
                 'submitGeneralText' => __('Gem generelle oplysninger', 'rigtig-for-mig'),
@@ -290,6 +291,14 @@ class RFM_Expert_Dashboard {
      * @since 3.5.0
      */
     public function tabbed_dashboard_shortcode($atts) {
+        // Prevent caching of dashboard page to ensure fresh category data
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('X-LiteSpeed-Cache-Control: no-cache');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+
         if (!is_user_logged_in()) {
             return '<p>' . __('Du skal være logget ind for at se dit dashboard.', 'rigtig-for-mig') . ' <a href="' . wp_login_url(get_permalink()) . '">' . __('Log ind', 'rigtig-for-mig') . '</a></p>';
         }
@@ -326,7 +335,8 @@ class RFM_Expert_Dashboard {
             $languages = array();
         }
 
-        // Get expert's current categories
+        // Get expert's current categories (force fresh data, bypass cache)
+        clean_object_term_cache($expert_id, 'rfm_expert');
         $expert_categories = wp_get_object_terms($expert_id, 'rfm_category', array('fields' => 'all'));
         if (is_wp_error($expert_categories)) {
             $expert_categories = array();
@@ -434,6 +444,10 @@ class RFM_Expert_Dashboard {
                             <?php echo esc_html($category->name); ?>
                         </button>
                     <?php endforeach; ?>
+                    <button type="button" class="rfm-tab-btn" data-tab="messages">
+                        <i class="dashicons dashicons-email-alt"></i> <?php _e('Beskeder', 'rigtig-for-mig'); ?>
+                        <span class="rfm-unread-count" id="rfm-expert-unread-count" style="display: none;"></span>
+                    </button>
                 </div>
 
                 <!-- Global Message Area -->
@@ -680,6 +694,27 @@ class RFM_Expert_Dashboard {
                     </form>
                 </div>
                 <?php endforeach; ?>
+
+                <!-- Tab Content: Messages -->
+                <div class="rfm-tab-content" data-tab-content="messages">
+                    <div class="rfm-expert-messages-container">
+                        <h3><?php _e('Mine Beskeder', 'rigtig-for-mig'); ?></h3>
+                        <div class="rfm-messages-actions" style="margin-bottom: 15px;">
+                            <button id="rfm-expert-mark-all-read-btn" class="rfm-btn rfm-btn-secondary" style="display: none;">
+                                <?php _e('Marker alle som læst', 'rigtig-for-mig'); ?>
+                            </button>
+                        </div>
+                        <div class="rfm-messages-loading" style="text-align: center; padding: 40px 20px; color: #666;">
+                            <i class="dashicons dashicons-update" style="font-size: 24px; animation: spin 1s linear infinite;"></i>
+                            <p><?php _e('Indlæser beskeder...', 'rigtig-for-mig'); ?></p>
+                        </div>
+                        <div id="rfm-expert-conversations-list" class="rfm-conversations-list" style="display: none;"></div>
+                        <div id="rfm-expert-no-messages" class="rfm-no-messages" style="display: none; text-align: center; padding: 40px 20px; color: #666;">
+                            <i class="dashicons dashicons-email-alt" style="font-size: 48px; opacity: 0.3;"></i>
+                            <p><?php _e('Du har ingen beskeder endnu.', 'rigtig-for-mig'); ?></p>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Education Template for Category Profiles -->
                 <template id="rfm-category-education-template">

@@ -118,6 +118,7 @@ class RFM_User_Dashboard {
             'timestamp' => time(),  // NEW: Current timestamp
             'debug' => defined('WP_DEBUG') && WP_DEBUG,
             'version' => RFM_VERSION,
+            'currentUserId' => get_current_user_id(),
             'strings' => array(
                 'savingText' => __('Gemmer...', 'rigtig-for-mig'),
                 'submitText' => __('Gem ændringer', 'rigtig-for-mig'),
@@ -287,6 +288,49 @@ class RFM_User_Dashboard {
                     </div>
                 </form>
             </div>
+
+            <!-- Messages Section -->
+            <div class="rfm-dashboard-section rfm-messages-section">
+                <h3>
+                    <?php _e('Mine Beskeder', 'rigtig-for-mig'); ?>
+                    <span class="rfm-unread-count" id="rfm-unread-count" style="display: none;"></span>
+                </h3>
+
+                <div class="rfm-messages-actions" style="margin-bottom: 15px;">
+                    <button id="rfm-mark-all-read-btn" class="rfm-btn rfm-btn-secondary" style="display: none;">
+                        <?php _e('Marker alle som læst', 'rigtig-for-mig'); ?>
+                    </button>
+                </div>
+
+                <div class="rfm-messages-container">
+                    <div class="rfm-messages-loading">
+                        <?php _e('Indlæser beskeder...', 'rigtig-for-mig'); ?>
+                    </div>
+                    <div id="rfm-conversations-list" class="rfm-conversations-list"></div>
+                </div>
+            </div>
+
+            <!-- Message Thread Modal -->
+            <div id="rfm-thread-modal" class="rfm-modal" style="display: none;">
+                <div class="rfm-modal-content rfm-thread-modal-content">
+                    <div class="rfm-modal-header">
+                        <h3 id="rfm-thread-title"></h3>
+                        <span class="rfm-modal-close">&times;</span>
+                    </div>
+                    <div class="rfm-thread-messages" id="rfm-thread-messages"></div>
+                    <form id="rfm-reply-form" class="rfm-reply-form">
+                        <textarea id="rfm-reply-text"
+                                  name="message"
+                                  class="rfm-form-control"
+                                  rows="3"
+                                  placeholder="<?php esc_attr_e('Skriv dit svar...', 'rigtig-for-mig'); ?>"
+                                  required></textarea>
+                        <button type="submit" class="rfm-btn rfm-btn-primary">
+                            <?php _e('Send svar', 'rigtig-for-mig'); ?>
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
         <?php
         return ob_get_clean();
@@ -440,10 +484,25 @@ class RFM_User_Dashboard {
 
         $file = $_FILES['avatar_image'];
 
-        // Validate file type
+        // Validate file type - SECURITY: Check actual file content, not just browser-supplied MIME type
         $allowed_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
-        if (!in_array($file['type'], $allowed_types)) {
-            wp_send_json_error(array('message' => __('Ugyldig filtype. Kun JPG, PNG, GIF og WebP er tilladt.', 'rigtig-for-mig')));
+
+        // Check actual MIME type from file content (more secure than $_FILES['type'])
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $real_mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($real_mime, $allowed_types)) {
+            wp_send_json_error(array('message' => __('Ugyldig filtype. Kun billeder (JPG, PNG, GIF, WebP) er tilladt.', 'rigtig-for-mig')));
+        }
+
+        // Additional security: Validate file extension
+        $filename = sanitize_file_name($file['name']);
+        $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $allowed_exts = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+
+        if (!in_array($file_ext, $allowed_exts)) {
+            wp_send_json_error(array('message' => __('Ugyldig fil-extension. Kun .jpg, .png, .gif og .webp er tilladt.', 'rigtig-for-mig')));
         }
 
         // Validate file size (max 5MB)

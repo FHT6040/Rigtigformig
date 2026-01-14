@@ -56,31 +56,30 @@ class RFM_Shortcodes {
         }
         
         // Sort by rating or date
-        if ($atts['orderby'] === 'rating') {
-            // Check if any experts have ratings
-            $has_ratings = get_posts(array(
-                'post_type' => 'rfm_expert',
-                'posts_per_page' => 1,
-                'meta_query' => array(
-                    array(
-                        'key' => '_rfm_average_rating',
-                        'compare' => 'EXISTS'
-                    )
-                )
-            ));
-            
-            if ($has_ratings) {
-                $args['meta_key'] = '_rfm_average_rating';
-                $args['orderby'] = 'meta_value_num';
-                $args['order'] = 'DESC';
-            } else {
-                // No ratings yet, sort by date
-                $args['orderby'] = 'date';
-                $args['order'] = 'DESC';
-            }
-        }
-        
+        // Note: We always fetch all posts and sort them to include experts without ratings
+
         $query = new WP_Query($args);
+
+        // If sorting by rating, manually sort the posts array to include experts without ratings
+        if ($atts['orderby'] === 'rating' && $query->have_posts()) {
+            $posts = $query->posts;
+
+            usort($posts, function($a, $b) {
+                $rating_a = floatval(get_post_meta($a->ID, '_rfm_average_rating', true));
+                $rating_b = floatval(get_post_meta($b->ID, '_rfm_average_rating', true));
+
+                // Sort by rating descending
+                if ($rating_b != $rating_a) {
+                    return $rating_b <=> $rating_a;
+                }
+
+                // If ratings are equal, sort by date descending
+                return strtotime($b->post_date) <=> strtotime($a->post_date);
+            });
+
+            $query->posts = $posts;
+            $query->post_count = count($posts);
+        }
         
         ob_start();
         
@@ -290,29 +289,22 @@ class RFM_Shortcodes {
         $languages = get_post_meta($expert_id, '_rfm_languages', true);
         $language_names = array();
         if (!empty($languages) && is_array($languages)) {
-            // Map language codes to native/international names (matching dashboard)
-            $language_map = array(
-                'dansk' => 'Dansk',
-                'english' => 'English',
-                'engelsk' => 'English',
-                'svenska' => 'Svenska',
-                'svensk' => 'Svenska',
-                'norsk' => 'Norsk / Bokmål',
-                'suomi' => 'Suomi',
-                'føroyskt' => 'Føroyskt',
-                'faeroyskt' => 'Føroyskt',
-                'kalaallisut' => 'Kalaallisut',
-                'español' => 'Español',
-                'espanol' => 'Español',
-                'italiano' => 'Italiano',
-                'deutsch' => 'Deutsch',
-                'al-arabiya' => 'العربية (al-arabiya)',
-                'arabic' => 'العربية (al-arabiya)'
-            );
-            
+            // Get language field labels from flexible fields system
+            $flexible_fields = RFM_Flexible_Fields_System::get_instance();
+            $all_fields = $flexible_fields->get_fields();
+            $language_fields = array();
+            if (isset($all_fields['sprog']) && isset($all_fields['sprog']['fields'])) {
+                $language_fields = $all_fields['sprog']['fields'];
+            }
+
             foreach ($languages as $lang) {
                 $lang_key = strtolower($lang);
-                $language_names[] = $language_map[$lang_key] ?? ucfirst($lang);
+                // Use label from flexible fields system if available, otherwise use capitalized key
+                if (isset($language_fields[$lang_key]['label'])) {
+                    $language_names[] = $language_fields[$lang_key]['label'];
+                } else {
+                    $language_names[] = ucfirst($lang);
+                }
             }
         }
         
