@@ -3,7 +3,7 @@
  * Plugin Name: Rigtig for mig - Ekspert Markedsplads
  * Plugin URI: https://rigtigformig.dk
  * Description: En komplet markedsplads for terapeuter, coaches, mentorer og vejledere med profilsider, ratings, abonnementer og multi-language support.
- * Version: 3.8.42
+ * Version: 3.9.0
  * Author: Rigtig for mig
  * Author URI: https://rigtigformig.dk
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('RFM_VERSION', '3.8.42');
+define('RFM_VERSION', '3.9.0');
 define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -107,6 +107,8 @@ class Rigtig_For_Mig {
         require_once RFM_PLUGIN_DIR . 'admin/class-rfm-admin-settings.php';
         require_once RFM_PLUGIN_DIR . 'admin/class-rfm-user-admin.php';
         require_once RFM_PLUGIN_DIR . 'admin/class-rfm-migration-admin.php';
+        require_once RFM_PLUGIN_DIR . 'admin/class-rfm-email-templates.php';  // v3.9.0
+        require_once RFM_PLUGIN_DIR . 'admin/class-rfm-mass-email.php';       // v3.9.0
         
         if (is_admin()) {
             // Additional admin-only code can go here
@@ -299,6 +301,12 @@ class Rigtig_For_Mig {
         
         // Initialize admin settings
         RFM_Admin_Settings::init();
+
+        // Initialize email templates and mass email (v3.9.0)
+        if (is_admin()) {
+            RFM_Email_Templates::get_instance();
+            RFM_Mass_Email::get_instance();
+        }
         
         // Register Elementor widgets if Elementor is active
         add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
