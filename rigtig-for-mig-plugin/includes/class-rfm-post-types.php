@@ -401,6 +401,21 @@ class RFM_Post_Types {
                 }
             }
         }
+
+        // Auto-populate coordinates from postal code
+        if (isset($_POST['rfm_postal_code']) && !empty($_POST['rfm_postal_code'])) {
+            $postal_code = sanitize_text_field($_POST['rfm_postal_code']);
+            $coordinates = RFM_Postal_Codes::get_coordinates($postal_code);
+
+            if ($coordinates) {
+                update_post_meta($post_id, '_rfm_latitude', $coordinates['latitude']);
+                update_post_meta($post_id, '_rfm_longitude', $coordinates['longitude']);
+            } else {
+                // Clear coordinates if postal code is invalid or not found
+                delete_post_meta($post_id, '_rfm_latitude');
+                delete_post_meta($post_id, '_rfm_longitude');
+            }
+        }
         
         // Save education
         if (isset($_POST['rfm_educations'])) {

@@ -84,15 +84,50 @@ class RFM_Public {
                 $query->set('tax_query', $tax_query);
             }
             
-            // Location filter (by city)
+            // Location filter with radius support
             if (isset($_GET['rfm_location']) && !empty($_GET['rfm_location'])) {
-                $meta_query = $query->get('meta_query') ?: array();
-                $meta_query[] = array(
-                    'key' => '_rfm_city',
-                    'value' => sanitize_text_field($_GET['rfm_location']),
-                    'compare' => 'LIKE'
-                );
-                $query->set('meta_query', $meta_query);
+                $location = sanitize_text_field($_GET['rfm_location']);
+                $radius = isset($_GET['rfm_radius']) ? floatval($_GET['rfm_radius']) : 0;
+
+                // If radius is specified, use coordinate-based search
+                if ($radius > 0) {
+                    // Try to get coordinates from postal code
+                    $coordinates = RFM_Postal_Codes::get_coordinates($location);
+
+                    if ($coordinates) {
+                        // Find experts within radius
+                        $expert_ids = $this->find_experts_within_radius(
+                            $coordinates['latitude'],
+                            $coordinates['longitude'],
+                            $radius
+                        );
+
+                        if (!empty($expert_ids)) {
+                            $query->set('post__in', $expert_ids);
+                        } else {
+                            // No experts found within radius - return empty result
+                            $query->set('post__in', array(0));
+                        }
+                    } else {
+                        // Invalid postal code - fall back to city search
+                        $meta_query = $query->get('meta_query') ?: array();
+                        $meta_query[] = array(
+                            'key' => '_rfm_city',
+                            'value' => $location,
+                            'compare' => 'LIKE'
+                        );
+                        $query->set('meta_query', $meta_query);
+                    }
+                } else {
+                    // No radius - use traditional city name search
+                    $meta_query = $query->get('meta_query') ?: array();
+                    $meta_query[] = array(
+                        'key' => '_rfm_city',
+                        'value' => $location,
+                        'compare' => 'LIKE'
+                    );
+                    $query->set('meta_query', $meta_query);
+                }
             }
             
             // Sort by rating (default)
@@ -131,7 +166,60 @@ class RFM_Public {
         
         return $orderby;
     }
-    
+
+    /**
+     * Find experts within a given radius from coordinates
+     *
+     * @param float $latitude Center latitude
+     * @param float $longitude Center longitude
+     * @param float $radius_km Radius in kilometers
+     * @return array Array of expert post IDs within radius, sorted by distance
+     */
+    private function find_experts_within_radius($latitude, $longitude, $radius_km) {
+        global $wpdb;
+
+        // Get all experts with coordinates
+        $experts_with_coords = $wpdb->get_results($wpdb->prepare("
+            SELECT
+                p.ID,
+                lat.meta_value AS latitude,
+                lng.meta_value AS longitude
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} lat ON p.ID = lat.post_id AND lat.meta_key = '_rfm_latitude'
+            INNER JOIN {$wpdb->postmeta} lng ON p.ID = lng.post_id AND lng.meta_key = '_rfm_longitude'
+            WHERE p.post_type = 'rfm_expert'
+            AND p.post_status = 'publish'
+            AND lat.meta_value != ''
+            AND lng.meta_value != ''
+        "));
+
+        $expert_ids = array();
+        $expert_distances = array();
+
+        foreach ($experts_with_coords as $expert) {
+            $distance = RFM_Postal_Codes::calculate_distance(
+                $latitude,
+                $longitude,
+                floatval($expert->latitude),
+                floatval($expert->longitude)
+            );
+
+            if ($distance <= $radius_km) {
+                $expert_ids[] = intval($expert->ID);
+                $expert_distances[intval($expert->ID)] = $distance;
+            }
+        }
+
+        // Sort by distance (closest first)
+        if (!empty($expert_ids)) {
+            usort($expert_ids, function($a, $b) use ($expert_distances) {
+                return $expert_distances[$a] <=> $expert_distances[$b];
+            });
+        }
+
+        return $expert_ids;
+    }
+
     /**
      * Handle expert actions (like email verification confirmation)
      */

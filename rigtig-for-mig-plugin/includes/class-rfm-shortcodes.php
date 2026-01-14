@@ -172,12 +172,24 @@ class RFM_Shortcodes {
                     </div>
                     
                     <div class="rfm-search-field">
-                        <input type="text" 
-                               name="rfm_location" 
-                               placeholder="<?php esc_attr_e('By', 'rigtig-for-mig'); ?>" 
+                        <input type="text"
+                               name="rfm_location"
+                               placeholder="<?php esc_attr_e('Postnummer eller by', 'rigtig-for-mig'); ?>"
                                value="<?php echo isset($_GET['rfm_location']) ? esc_attr($_GET['rfm_location']) : ''; ?>" />
                     </div>
-                    
+
+                    <div class="rfm-search-field">
+                        <select name="rfm_radius">
+                            <option value=""><?php _e('Radius', 'rigtig-for-mig'); ?></option>
+                            <option value="5" <?php selected(isset($_GET['rfm_radius']) && $_GET['rfm_radius'] == '5'); ?>>5 km</option>
+                            <option value="10" <?php selected(isset($_GET['rfm_radius']) && $_GET['rfm_radius'] == '10'); ?>>10 km</option>
+                            <option value="25" <?php selected(isset($_GET['rfm_radius']) && $_GET['rfm_radius'] == '25'); ?>>25 km</option>
+                            <option value="50" <?php selected(isset($_GET['rfm_radius']) && $_GET['rfm_radius'] == '50'); ?>>50 km</option>
+                            <option value="100" <?php selected(isset($_GET['rfm_radius']) && $_GET['rfm_radius'] == '100'); ?>>100 km</option>
+                            <option value="999999" <?php selected(isset($_GET['rfm_radius']) && $_GET['rfm_radius'] == '999999'); ?>><?php _e('Hele Danmark', 'rigtig-for-mig'); ?></option>
+                        </select>
+                    </div>
+
                     <button type="submit" class="rfm-search-btn">
                         <span class="dashicons dashicons-search"></span>
                         <?php _e('Søg', 'rigtig-for-mig'); ?>
