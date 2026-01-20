@@ -353,11 +353,8 @@ class RFM_Expert_Dashboard {
             'hide_empty' => false
         ));
 
-        // Get all specializations
-        $all_specializations = get_terms(array(
-            'taxonomy' => 'rfm_specialization',
-            'hide_empty' => false
-        ));
+        // Note: Specializations are now fetched per-category using RFM_Taxonomies::get_specializations_for_category()
+        // This filters specializations based on their assigned categories
 
         // Define limits
         $max_categories = array('free' => 1, 'standard' => 2, 'premium' => 99);
@@ -737,16 +734,25 @@ class RFM_Expert_Dashboard {
                             <div class="rfm-specialization-checkboxes"
                                  data-max="<?php echo esc_attr($allowed_specs); ?>"
                                  data-category-id="<?php echo esc_attr($category->term_id); ?>">
-                                <?php foreach ($all_specializations as $spec): ?>
-                                <label class="rfm-specialization-choice">
-                                    <input type="checkbox"
-                                           name="specializations[]"
-                                           value="<?php echo esc_attr($spec->term_id); ?>"
-                                           class="rfm-spec-checkbox"
-                                           <?php checked(in_array($spec->term_id, $cat_specs)); ?> />
-                                    <span><?php echo esc_html($spec->name); ?></span>
-                                </label>
-                                <?php endforeach; ?>
+                                <?php
+                                // Get only specializations that belong to this category
+                                $category_specializations = RFM_Taxonomies::get_specializations_for_category($category->term_id);
+                                if (empty($category_specializations)): ?>
+                                    <p style="color: #666; font-style: italic;">
+                                        <?php _e('Ingen specialiseringer fundet for denne kategori. Administrator skal tilføje specialiseringer.', 'rigtig-for-mig'); ?>
+                                    </p>
+                                <?php else: ?>
+                                    <?php foreach ($category_specializations as $spec): ?>
+                                    <label class="rfm-specialization-choice">
+                                        <input type="checkbox"
+                                               name="specializations[]"
+                                               value="<?php echo esc_attr($spec->term_id); ?>"
+                                               class="rfm-spec-checkbox"
+                                               <?php checked(in_array($spec->term_id, $cat_specs)); ?> />
+                                        <span><?php echo esc_html($spec->name); ?></span>
+                                    </label>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
 
                             <p class="rfm-spec-limit-notice" style="display: none; color: #e74c3c; margin-top: 10px;">

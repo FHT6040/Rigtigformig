@@ -10,13 +10,19 @@ if (!defined('ABSPATH')) {
 }
 
 class RFM_Taxonomies {
-    
+
     /**
      * Register custom taxonomies
      */
     public static function register() {
         self::register_category_taxonomy();
         self::register_specialization_taxonomy();
+
+        // Add admin fields for specialization-category relationship
+        add_action('rfm_specialization_add_form_fields', array(__CLASS__, 'add_specialization_category_field'));
+        add_action('rfm_specialization_edit_form_fields', array(__CLASS__, 'edit_specialization_category_field'), 10, 2);
+        add_action('created_rfm_specialization', array(__CLASS__, 'save_specialization_category_field'));
+        add_action('edited_rfm_specialization', array(__CLASS__, 'save_specialization_category_field'));
     }
     
     /**
@@ -225,5 +231,105 @@ class RFM_Taxonomies {
     public static function get_category_icon($term_id) {
         $icon = get_term_meta($term_id, 'icon', true);
         return $icon ? $icon : 'default';
+    }
+
+    /**
+     * Add category field when creating new specialization
+     */
+    public static function add_specialization_category_field() {
+        $categories = get_terms(array(
+            'taxonomy' => 'rfm_category',
+            'hide_empty' => false
+        ));
+        ?>
+        <div class="form-field">
+            <label><?php _e('Tilhørende Kategorier', 'rigtig-for-mig'); ?></label>
+            <p><?php _e('Vælg hvilke kategorier denne specialisering skal vises under (kan være flere).', 'rigtig-for-mig'); ?></p>
+            <?php foreach ($categories as $category): ?>
+                <label style="display: block; margin: 5px 0;">
+                    <input type="checkbox" name="rfm_categories[]" value="<?php echo esc_attr($category->term_id); ?>" />
+                    <?php echo esc_html($category->name); ?>
+                </label>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Add category field when editing specialization
+     */
+    public static function edit_specialization_category_field($term, $taxonomy) {
+        $categories = get_terms(array(
+            'taxonomy' => 'rfm_category',
+            'hide_empty' => false
+        ));
+
+        $selected_categories = get_term_meta($term->term_id, 'rfm_categories', true);
+        if (!is_array($selected_categories)) {
+            $selected_categories = array();
+        }
+        ?>
+        <tr class="form-field">
+            <th scope="row">
+                <label><?php _e('Tilhørende Kategorier', 'rigtig-for-mig'); ?></label>
+            </th>
+            <td>
+                <p class="description"><?php _e('Vælg hvilke kategorier denne specialisering skal vises under (kan være flere).', 'rigtig-for-mig'); ?></p>
+                <?php foreach ($categories as $category): ?>
+                    <label style="display: block; margin: 5px 0;">
+                        <input type="checkbox" name="rfm_categories[]" value="<?php echo esc_attr($category->term_id); ?>"
+                            <?php checked(in_array($category->term_id, $selected_categories)); ?> />
+                        <?php echo esc_html($category->name); ?>
+                    </label>
+                <?php endforeach; ?>
+            </td>
+        </tr>
+        <?php
+    }
+
+    /**
+     * Save category field for specialization
+     */
+    public static function save_specialization_category_field($term_id) {
+        if (isset($_POST['rfm_categories']) && is_array($_POST['rfm_categories'])) {
+            $categories = array_map('intval', $_POST['rfm_categories']);
+            update_term_meta($term_id, 'rfm_categories', $categories);
+        } else {
+            // No categories selected - delete meta
+            delete_term_meta($term_id, 'rfm_categories');
+        }
+    }
+
+    /**
+     * Get specializations for a specific category
+     *
+     * @param int $category_id Category term ID
+     * @return array Array of specialization term objects
+     */
+    public static function get_specializations_for_category($category_id) {
+        // Get all specializations
+        $all_specs = get_terms(array(
+            'taxonomy' => 'rfm_specialization',
+            'hide_empty' => false
+        ));
+
+        $filtered_specs = array();
+
+        foreach ($all_specs as $spec) {
+            $spec_categories = get_term_meta($spec->term_id, 'rfm_categories', true);
+
+            // If no categories assigned, show it in all categories (backwards compatibility)
+            if (empty($spec_categories)) {
+                $filtered_specs[] = $spec;
+                continue;
+            }
+
+            // Check if this specialization belongs to the requested category
+            if (is_array($spec_categories) && in_array($category_id, $spec_categories)) {
+                $filtered_specs[] = $spec;
+            }
+        }
+
+        return $filtered_specs;
     }
 }
