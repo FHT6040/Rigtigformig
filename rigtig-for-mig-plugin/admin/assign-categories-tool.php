@@ -39,6 +39,11 @@ class RFM_Assign_Categories_Tool {
             self::process_assignment();
         }
 
+        // Process deletion if delete button clicked
+        if (isset($_POST['rfm_delete_category_specs_nonce']) && wp_verify_nonce($_POST['rfm_delete_category_specs_nonce'], 'rfm_delete_category_specs')) {
+            self::delete_category_specializations();
+        }
+
         ?>
         <div class="wrap">
             <h1>Tildel Kategorier til Specialiseringer</h1>
@@ -55,6 +60,29 @@ class RFM_Assign_Categories_Tool {
                 <p>
                     <button type="submit" class="button button-primary button-large">
                         🔄 Tildel Kategorier til Alle Specialiseringer
+                    </button>
+                </p>
+            </form>
+
+            <hr style="margin: 30px 0;">
+
+            <h2>Slet Kategori-Specialiseringer</h2>
+            <div class="notice notice-warning">
+                <p><strong>Bemærk:</strong> Følgende specialiseringer er faktisk kategori-navne og bør slettes:</p>
+                <ul style="list-style: disc; margin-left: 20px;">
+                    <li>Hjerne & Psyke</li>
+                    <li>Krop & Bevægelse</li>
+                    <li>Mad & Sundhed</li>
+                    <li>Sjæl & Mening</li>
+                </ul>
+                <p>Disse er kategorier, ikke specialiseringer. Klik nedenfor for at slette dem.</p>
+            </div>
+
+            <form method="post" style="margin-top: 20px;">
+                <?php wp_nonce_field('rfm_delete_category_specs', 'rfm_delete_category_specs_nonce'); ?>
+                <p>
+                    <button type="submit" class="button button-secondary" onclick="return confirm('Er du sikker på at du vil slette disse 4 specialiseringer?');">
+                        🗑️ Slet Kategori-Specialiseringer
                     </button>
                 </p>
             </form>
@@ -75,51 +103,61 @@ class RFM_Assign_Categories_Tool {
         }
 
         // Mapping: specialization name patterns => category names
+        // IMPORTANT: Matches are case-insensitive and use partial matching (stripos)
+        // Based on actual specializations in the database
         $mappings = array(
-            // Hjerne & Psyke
+            // Hjerne & Psyke - Mental sundhed, coaching, terapi, psykologi
             'hjerne & psyke' => array(
-                'angst', 'depression', 'stress', 'traumer', 'parterapi', 'coaching',
-                'erhvervscoaching', 'livscoaching', 'business coaching', 'career coaching',
-                'psykolog', 'psykoterapi', 'terapi', 'mental', 'adhd', 'add', 'ocd',
-                'krisehåndtering', 'sorgbehandling', 'følelsesregulering',
-                'angstbehandling', 'panikangst', 'social angst', 'GAD',
-                'mindfulness', 'meditation', 'kognitiv', 'ACT', 'KBT',
-                'familierådgivning', 'parforhold', 'skilsmisse', 'relationsrådgivning',
-                'selvværd', 'selvtillid', 'personlig udvikling', 'vækst'
+                // Direkte matches fra listen
+                'afhængighed', 'angst', 'børnepsykolog', 'business coaching',
+                'coaching', 'depression', 'EMDR', 'erhvervscoach',
+                'executive', 'familie', 'karriere', 'kognitiv adfærd',
+                'kropsterapi', 'ledelsescoach', 'life coach', 'livscoach',
+                'menopause', 'mentor', 'mindfulness', 'NLP',
+                'parterapi', 'performance', 'personlig udvikling',
+                'samtale', 'selvværd', 'sexolog', 'sorgbehandling',
+                'søvnterapi', 'stress', 'startup', 'teamcoach',
+                'traumer', 'terapi', 'psykolog', 'coach',
+                // Også generiske patterns
+                'mental', 'relation', 'vækst', 'udvikling'
             ),
 
-            // Krop & Bevægelse
+            // Krop & Bevægelse - Fysisk træning, terapi, behandling
             'krop & bevægelse' => array(
-                'fysioterapi', 'yoga', 'pilates', 'personlig træning', 'træning',
-                'kiropraktik', 'massage', 'kropsterapi', 'bevægelse',
-                'fitness', 'styrketræning', 'kondition', 'løb', 'cykling',
-                'body & mind', 'kropsholdning', 'rygbehandling',
-                'smertebehandling', 'sportsmassage', 'afspænding',
-                'akupunktur', 'zoneterapi', 'osteopati', 'manuel terapi',
-                'rehabilitering', 'skadeforebyggelse', 'mobility', 'stretching'
+                // Direkte matches fra listen
+                'akupunktur', 'bækken', 'boxing', 'crossfit',
+                'dans', 'fysio', 'gravid træning', 'kiroprak',
+                'kropsterapi', 'løbetræning', 'massage', 'mobility',
+                'naprapati', 'osteopat', 'personlig træning',
+                'pilates', 'rygtræning', 'senior', 'shiatsu',
+                'spinning', 'styrke', 'TRX', 'yoga',
+                // Også generiske patterns
+                'træning', 'træner', 'bevægelse', 'fysisk',
+                'kropslig', 'krop', 'motion', 'fitness'
             ),
 
-            // Mad & Sundhed
+            // Mad & Sundhed - Ernæring, kost, sundhed, diæt
             'mad & sundhed' => array(
-                'ernæring', 'vægtreduktion', 'allergi', 'vegan', 'vegetar',
-                'sporternæring', 'detox', 'diætist', 'kosttilskud',
-                'slankekur', 'kost', 'kostplanlægning', 'madplan',
-                'diabetes', 'colitis', 'crohn', 'ibs', 'mave',
-                'glutenfri', 'laktosefri', 'fodmap', 'allergitest',
-                'vitamin', 'mineral', 'helsekost', 'økologi',
-                'vægttab', 'fedtprocent', 'BMI', 'kalorier'
+                // Direkte matches fra listen
+                'allergi', 'anti-inflammation', 'detox', 'diabetes',
+                'ernæring', 'fertilitet', 'fordøjelse', 'glutenfri',
+                'hormon', 'ketogen', 'klinisk diæt', 'laktosefri',
+                'menopause', 'plantebaseret', 'sport', 'vægt',
+                'vegan', 'diæt', 'kost',
+                // Også generiske patterns
+                'mad', 'føde', 'nutrition', 'sundhed', 'health'
             ),
 
-            // Sjæl & Mening
+            // Sjæl & Mening - Spiritualitet, healing, energi, astrologi
             'sjæl & mening' => array(
-                'spirituel', 'healing', 'tarot', 'astrologi', 'clairvoyance',
-                'sjæl', 'mening', 'bevidsthed', 'åndelig', 'transcendental',
-                'chakra', 'energi', 'krystal', 'naturmedicin',
-                'shamanic', 'shamanisme', 'ritual', 'ceremony',
-                'mindfulness', 'meditation', 'mantra', 'åndedræt',
-                'hypnose', 'hypnoterapi', 'regression', 'past life',
-                'clairvoyant', 'synsk', 'medium', 'åndelig vejledning',
-                'reiki', 'prænic healing', 'lysterapi', 'lydhealing'
+                // Direkte matches fra listen
+                'astrologi', 'chakra', 'clairvoyance', 'energi',
+                'englekort', 'healing', 'krystal', 'meditation',
+                'mindfulness', 'reiki', 'shamansk', 'spirituel',
+                'tarot',
+                // Også generiske patterns
+                'åndelig', 'sjæl', 'soul', 'mening', 'bevidsthed',
+                'transcendent', 'mystisk', 'esoterisk'
             )
         );
 
@@ -200,6 +238,68 @@ class RFM_Assign_Categories_Tool {
                 <p><em>Disse vises i ALLE kategorier (ingen match fundet):</em></p>
                 <ul style="list-style: disc; margin-left: 20px;">
                     <?php foreach ($results['skipped'] as $name): ?>
+                        <li><?php echo esc_html($name); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+
+            <p style="margin-top: 20px;">
+                <a href="<?php echo admin_url('edit-tags.php?taxonomy=rfm_specialization&post_type=rfm_expert'); ?>" class="button button-primary">
+                    Gå til Specialiseringer for at verificere
+                </a>
+            </p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Delete category-named specializations
+     */
+    private static function delete_category_specializations() {
+        $category_names = array(
+            'Hjerne & Psyke',
+            'Krop & Bevægelse',
+            'Mad & Sundhed',
+            'Sjæl & Mening'
+        );
+
+        $deleted = array();
+        $not_found = array();
+
+        foreach ($category_names as $name) {
+            $term = get_term_by('name', $name, 'rfm_specialization');
+
+            if ($term) {
+                $result = wp_delete_term($term->term_id, 'rfm_specialization');
+
+                if (!is_wp_error($result) && $result) {
+                    $deleted[] = $name;
+                } else {
+                    $not_found[] = $name . ' (kunne ikke slettes)';
+                }
+            } else {
+                $not_found[] = $name . ' (ikke fundet)';
+            }
+        }
+
+        // Display results
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <h2>🗑️ Sletning Fuldført!</h2>
+
+            <?php if (!empty($deleted)): ?>
+                <h3>✅ Slettet: <?php echo count($deleted); ?> specialiseringer</h3>
+                <ul style="list-style: disc; margin-left: 20px;">
+                    <?php foreach ($deleted as $name): ?>
+                        <li><?php echo esc_html($name); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+
+            <?php if (!empty($not_found)): ?>
+                <h3>⚠️ Ikke fundet/slettet: <?php echo count($not_found); ?></h3>
+                <ul style="list-style: disc; margin-left: 20px;">
+                    <?php foreach ($not_found as $name): ?>
                         <li><?php echo esc_html($name); ?></li>
                     <?php endforeach; ?>
                 </ul>
