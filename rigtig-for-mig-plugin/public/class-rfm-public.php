@@ -22,6 +22,7 @@ class RFM_Public {
     
     private function __construct() {
         add_filter('pre_get_posts', array($this, 'modify_expert_query'));
+        add_filter('posts_search', array($this, 'extend_expert_search'), 10, 2);
         add_action('template_redirect', array($this, 'handle_expert_actions'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
     }
@@ -141,7 +142,75 @@ class RFM_Public {
             add_filter('posts_orderby', array($this, 'boost_premium_experts'), 10, 2);
         }
     }
-    
+
+    /**
+     * Extend expert search to include taxonomies and meta fields
+     *
+     * Searches in:
+     * - Post title (default)
+     * - Post content (default)
+     * - Taxonomies: rfm_category, rfm_specialization
+     * - Meta fields: _rfm_about_me
+     *
+     * @param string $search SQL search string
+     * @param WP_Query $query The WP_Query instance
+     * @return string Modified SQL search string
+     */
+    public function extend_expert_search($search, $query) {
+        global $wpdb;
+
+        // Only modify expert searches with a search term
+        if (empty($search) || !$query->is_search() || get_query_var('post_type') !== 'rfm_expert') {
+            return $search;
+        }
+
+        $search_term = $query->get('s');
+        if (empty($search_term)) {
+            return $search;
+        }
+
+        // Get the search term prepared for SQL LIKE
+        $like = '%' . $wpdb->esc_like($search_term) . '%';
+
+        // Build extended search query
+        $search_parts = array();
+
+        // 1. Search in taxonomies (rfm_category, rfm_specialization)
+        $search_parts[] = $wpdb->prepare("
+            {$wpdb->posts}.ID IN (
+                SELECT DISTINCT tr.object_id
+                FROM {$wpdb->term_relationships} tr
+                INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+                INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+                WHERE tt.taxonomy IN ('rfm_category', 'rfm_specialization')
+                AND t.name LIKE %s
+            )
+        ", $like);
+
+        // 2. Search in meta fields (_rfm_about_me)
+        $search_parts[] = $wpdb->prepare("
+            {$wpdb->posts}.ID IN (
+                SELECT DISTINCT post_id
+                FROM {$wpdb->postmeta}
+                WHERE meta_key = '_rfm_about_me'
+                AND meta_value LIKE %s
+            )
+        ", $like);
+
+        // Combine with OR
+        $extended_search = '(' . implode(' OR ', $search_parts) . ')';
+
+        // Append to existing search (which already searches post_title and post_content)
+        if (!empty($search)) {
+            $search = preg_replace('/^\s*AND\s*/', '', $search);
+            $search = " AND ({$search} OR {$extended_search}) ";
+        } else {
+            $search = " AND {$extended_search} ";
+        }
+
+        return $search;
+    }
+
     /**
      * Boost premium experts in search results
      */
