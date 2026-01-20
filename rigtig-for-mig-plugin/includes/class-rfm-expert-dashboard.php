@@ -493,6 +493,75 @@ class RFM_Expert_Dashboard {
                                 🔒 <?php _e('Hjemmeside og firma navn kræver Standard eller Premium medlemskab.', 'rigtig-for-mig'); ?>
                             </div>
                             <?php endif; ?>
+
+                            <!-- Location fields (available for all plans) -->
+                            <div class="rfm-form-field">
+                                <label for="general_address"><?php _e('Adresse', 'rigtig-for-mig'); ?></label>
+                                <input type="text" name="address" id="general_address" value="<?php echo esc_attr(get_post_meta($expert_id, '_rfm_address', true)); ?>" placeholder="Eksempel: Vesterbrogade 10" />
+                            </div>
+
+                            <div class="rfm-form-row">
+                                <div class="rfm-form-field rfm-form-field-half">
+                                    <label for="general_postal_code"><?php _e('Postnummer', 'rigtig-for-mig'); ?></label>
+                                    <input type="text" name="postal_code" id="general_postal_code" value="<?php echo esc_attr(get_post_meta($expert_id, '_rfm_postal_code', true)); ?>" placeholder="2000" maxlength="4" />
+                                    <small class="rfm-field-hint"><?php _e('Bruges til lokationsbaseret søgning', 'rigtig-for-mig'); ?></small>
+                                </div>
+
+                                <div class="rfm-form-field rfm-form-field-half">
+                                    <label for="general_city"><?php _e('By', 'rigtig-for-mig'); ?></label>
+                                    <input type="text" name="city" id="general_city" value="<?php echo esc_attr(get_post_meta($expert_id, '_rfm_city', true)); ?>" placeholder="København" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Profile Images -->
+                        <div class="rfm-form-section">
+                            <h3><?php _e('Profilbilleder', 'rigtig-for-mig'); ?></h3>
+
+                            <!-- Profile Picture (all plans) -->
+                            <div class="rfm-image-upload-field">
+                                <label><?php _e('Profilbillede', 'rigtig-for-mig'); ?></label>
+                                <div class="rfm-image-preview">
+                                    <?php
+                                    $avatar_url = get_avatar_url($user_id, array('size' => 150));
+                                    ?>
+                                    <img id="rfm-avatar-preview" src="<?php echo esc_url($avatar_url); ?>" alt="<?php _e('Profilbillede', 'rigtig-for-mig'); ?>" />
+                                </div>
+                                <input type="file" id="rfm-avatar-upload" name="avatar_image" accept="image/*" style="display: none;" />
+                                <button type="button" class="rfm-btn rfm-btn-secondary" onclick="document.getElementById('rfm-avatar-upload').click();">
+                                    <?php _e('Upload profilbillede', 'rigtig-for-mig'); ?>
+                                </button>
+                                <small class="rfm-field-hint"><?php _e('Anbefalet: 400x400px eller større, max 2MB', 'rigtig-for-mig'); ?></small>
+                            </div>
+
+                            <!-- Banner Image (Premium only) -->
+                            <?php if ($plan === 'premium'): ?>
+                            <div class="rfm-image-upload-field">
+                                <label><?php _e('Banner billede', 'rigtig-for-mig'); ?></label>
+                                <div class="rfm-image-preview rfm-banner-preview">
+                                    <?php
+                                    $banner_id = get_post_meta($expert_id, '_rfm_banner_image_id', true);
+                                    $banner_url = $banner_id ? wp_get_attachment_url($banner_id) : '';
+                                    ?>
+                                    <?php if ($banner_url): ?>
+                                        <img id="rfm-banner-preview" src="<?php echo esc_url($banner_url); ?>" alt="<?php _e('Banner billede', 'rigtig-for-mig'); ?>" />
+                                    <?php else: ?>
+                                        <div id="rfm-banner-preview" class="rfm-banner-placeholder">
+                                            <?php _e('Ingen banner billede', 'rigtig-for-mig'); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <input type="file" id="rfm-banner-upload" name="banner_image" accept="image/*" style="display: none;" />
+                                <button type="button" class="rfm-btn rfm-btn-secondary" onclick="document.getElementById('rfm-banner-upload').click();">
+                                    <?php _e('Upload banner billede', 'rigtig-for-mig'); ?>
+                                </button>
+                                <small class="rfm-field-hint"><?php _e('Anbefalet: 1200x400px, max 2MB', 'rigtig-for-mig'); ?></small>
+                            </div>
+                            <?php else: ?>
+                            <div class="rfm-upgrade-notice">
+                                🔒 <?php _e('Banner billede kræver Premium medlemskab.', 'rigtig-for-mig'); ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Sprog -->

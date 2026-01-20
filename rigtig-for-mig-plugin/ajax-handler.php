@@ -116,6 +116,14 @@ switch ($action) {
         rfm_direct_expert_logout();
         break;
 
+    case 'rfm_upload_expert_avatar':
+        rfm_direct_upload_expert_avatar();
+        break;
+
+    case 'rfm_upload_expert_banner':
+        rfm_direct_upload_expert_banner();
+        break;
+
     case 'rfm_unified_login':
         rfm_direct_unified_login();
         break;
@@ -406,6 +414,33 @@ function rfm_direct_save_general_profile() {
     update_post_meta($expert_id, '_rfm_email', sanitize_email($_POST['email']));
     update_post_meta($expert_id, '_rfm_phone', sanitize_text_field($_POST['phone'] ?? ''));
 
+    // Update location fields (available for all plans)
+    if (isset($_POST['address'])) {
+        update_post_meta($expert_id, '_rfm_address', sanitize_text_field($_POST['address']));
+    }
+    if (isset($_POST['city'])) {
+        update_post_meta($expert_id, '_rfm_city', sanitize_text_field($_POST['city']));
+    }
+
+    // Update postal code and auto-populate coordinates
+    if (isset($_POST['postal_code'])) {
+        $postal_code = sanitize_text_field($_POST['postal_code']);
+        update_post_meta($expert_id, '_rfm_postal_code', $postal_code);
+
+        // Auto-populate coordinates from postal code
+        if (!empty($postal_code) && class_exists('RFM_Postal_Codes')) {
+            $coordinates = RFM_Postal_Codes::get_coordinates($postal_code);
+            if ($coordinates) {
+                update_post_meta($expert_id, '_rfm_latitude', $coordinates['latitude']);
+                update_post_meta($expert_id, '_rfm_longitude', $coordinates['longitude']);
+            } else {
+                // Invalid postal code - clear coordinates
+                delete_post_meta($expert_id, '_rfm_latitude');
+                delete_post_meta($expert_id, '_rfm_longitude');
+            }
+        }
+    }
+
     // Update fields based on plan
     if ($plan === 'standard' || $plan === 'premium') {
         update_post_meta($expert_id, '_rfm_website', esc_url_raw($_POST['website'] ?? ''));
@@ -624,6 +659,201 @@ function rfm_direct_expert_logout() {
     wp_send_json_success(array(
         'message' => 'Du er nu logget ud',
         'redirect' => home_url()
+    ));
+    exit;
+}
+
+/**
+ * Handle expert avatar upload
+ *
+ * @since 3.9.1
+ */
+function rfm_direct_upload_expert_avatar() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+
+    // Verify ownership
+    $post = get_post($expert_id);
+    if (!$post || $post->post_author != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    // Check if file was uploaded
+    if (empty($_FILES['avatar_image'])) {
+        wp_send_json_error(array('message' => 'Ingen fil blev uploadet.'));
+        exit;
+    }
+
+    $file = $_FILES['avatar_image'];
+
+    // Validate file type - SECURITY: Check actual file content
+    $allowed_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $real_mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    if (!in_array($real_mime, $allowed_types)) {
+        wp_send_json_error(array('message' => 'Ugyldig filtype. Kun billeder (JPG, PNG, GIF, WebP) er tilladt.'));
+        exit;
+    }
+
+    // Validate file extension
+    $filename = sanitize_file_name($file['name']);
+    $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    $allowed_exts = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+
+    if (!in_array($file_ext, $allowed_exts)) {
+        wp_send_json_error(array('message' => 'Ugyldig fil-extension.'));
+        exit;
+    }
+
+    // Validate file size (max 5MB)
+    $max_size = 5 * 1024 * 1024;
+    if ($file['size'] > $max_size) {
+        wp_send_json_error(array('message' => 'Filen er for stor. Maksimum 5MB.'));
+        exit;
+    }
+
+    // Include WordPress media functions
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+    // Upload the file
+    $attachment_id = media_handle_upload('avatar_image', $expert_id);
+
+    if (is_wp_error($attachment_id)) {
+        wp_send_json_error(array('message' => $attachment_id->get_error_message()));
+        exit;
+    }
+
+    // Set as featured image (used as avatar)
+    set_post_thumbnail($expert_id, $attachment_id);
+
+    // Get the image URL
+    $image_url = wp_get_attachment_image_url($attachment_id, 'thumbnail');
+
+    wp_send_json_success(array(
+        'message' => 'Profilbillede uploadet!',
+        'attachment_id' => $attachment_id,
+        'image_url' => $image_url
+    ));
+    exit;
+}
+
+/**
+ * Handle expert banner upload
+ *
+ * @since 3.9.1
+ */
+function rfm_direct_upload_expert_banner() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+
+    // Verify ownership
+    $post = get_post($expert_id);
+    if (!$post || $post->post_author != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    // Check if expert has Premium plan
+    $plan = RFM_Subscriptions::get_instance()->get_expert_plan($expert_id);
+    if ($plan !== 'premium') {
+        wp_send_json_error(array('message' => 'Banner billeder kræver Premium abonnement.'), 403);
+        exit;
+    }
+
+    // Check if file was uploaded
+    if (empty($_FILES['banner_image'])) {
+        wp_send_json_error(array('message' => 'Ingen fil blev uploadet.'));
+        exit;
+    }
+
+    $file = $_FILES['banner_image'];
+
+    // Validate file type - SECURITY: Check actual file content
+    $allowed_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $real_mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    if (!in_array($real_mime, $allowed_types)) {
+        wp_send_json_error(array('message' => 'Ugyldig filtype. Kun billeder (JPG, PNG, GIF, WebP) er tilladt.'));
+        exit;
+    }
+
+    // Validate file extension
+    $filename = sanitize_file_name($file['name']);
+    $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    $allowed_exts = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+
+    if (!in_array($file_ext, $allowed_exts)) {
+        wp_send_json_error(array('message' => 'Ugyldig fil-extension.'));
+        exit;
+    }
+
+    // Validate file size (max 10MB for banners)
+    $max_size = 10 * 1024 * 1024;
+    if ($file['size'] > $max_size) {
+        wp_send_json_error(array('message' => 'Filen er for stor. Maksimum 10MB.'));
+        exit;
+    }
+
+    // Include WordPress media functions
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+    // Upload the file
+    $attachment_id = media_handle_upload('banner_image', $expert_id);
+
+    if (is_wp_error($attachment_id)) {
+        wp_send_json_error(array('message' => $attachment_id->get_error_message()));
+        exit;
+    }
+
+    // Save as banner meta field
+    update_post_meta($expert_id, '_rfm_banner_image_id', $attachment_id);
+
+    // Get the image URL
+    $image_url = wp_get_attachment_image_url($attachment_id, 'large');
+
+    wp_send_json_success(array(
+        'message' => 'Banner billede uploadet!',
+        'attachment_id' => $attachment_id,
+        'image_url' => $image_url
     ));
     exit;
 }

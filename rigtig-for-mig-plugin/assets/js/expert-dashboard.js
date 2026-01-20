@@ -97,6 +97,137 @@
         });
 
         // ========================================
+        // AVATAR IMAGE UPLOAD
+        // ========================================
+        $('#rfm-avatar-upload').on('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+
+            var expertId = $('#rfm-general-profile-form').find('input[name="expert_id"]').val();
+            var nonce = $('#rfm-general-profile-form').find('input[name="nonce"]').val();
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Filen er for stor. Maksimum 5MB.');
+                $(this).val('');
+                return;
+            }
+
+            // Validate file type
+            var validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                alert('Ugyldig filtype. Kun JPG, PNG, GIF og WebP er tilladt.');
+                $(this).val('');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('action', 'rfm_upload_expert_avatar');
+            formData.append('avatar_image', file);
+            formData.append('expert_id', expertId);
+            formData.append('nonce', nonce);
+
+            // Show loading state
+            var $preview = $('#rfm-avatar-preview');
+            var originalSrc = $preview.attr('src');
+            $preview.css('opacity', '0.5');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        // Update preview image
+                        $preview.attr('src', response.data.image_url + '?t=' + new Date().getTime());
+                        $preview.css('opacity', '1');
+                        alert('✅ ' + response.data.message);
+                    } else {
+                        alert('❌ ' + response.data.message);
+                        $preview.css('opacity', '1');
+                    }
+                },
+                error: function() {
+                    alert('Der opstod en fejl ved upload. Prøv igen.');
+                    $preview.attr('src', originalSrc);
+                    $preview.css('opacity', '1');
+                }
+            });
+
+            // Clear file input
+            $(this).val('');
+        });
+
+        // ========================================
+        // BANNER IMAGE UPLOAD
+        // ========================================
+        $('#rfm-banner-upload').on('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+
+            var expertId = $('#rfm-general-profile-form').find('input[name="expert_id"]').val();
+            var nonce = $('#rfm-general-profile-form').find('input[name="nonce"]').val();
+
+            // Validate file size (10MB for banners)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Filen er for stor. Maksimum 10MB.');
+                $(this).val('');
+                return;
+            }
+
+            // Validate file type
+            var validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                alert('Ugyldig filtype. Kun JPG, PNG, GIF og WebP er tilladt.');
+                $(this).val('');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('action', 'rfm_upload_expert_banner');
+            formData.append('banner_image', file);
+            formData.append('expert_id', expertId);
+            formData.append('nonce', nonce);
+
+            // Show loading state
+            var $preview = $('#rfm-banner-preview');
+            if ($preview.length === 0) {
+                // Create preview element if it doesn't exist
+                $('#rfm-banner-upload').after('<img id="rfm-banner-preview" style="max-width: 100%; margin-top: 10px; display: block;" />');
+                $preview = $('#rfm-banner-preview');
+            }
+            $preview.css('opacity', '0.5');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        // Update/show preview image
+                        $preview.attr('src', response.data.image_url + '?t=' + new Date().getTime());
+                        $preview.css('opacity', '1').show();
+                        alert('✅ ' + response.data.message);
+                    } else {
+                        alert('❌ ' + response.data.message);
+                        $preview.css('opacity', '1');
+                    }
+                },
+                error: function() {
+                    alert('Der opstod en fejl ved upload. Prøv igen.');
+                    $preview.css('opacity', '1');
+                }
+            });
+
+            // Clear file input
+            $(this).val('');
+        });
+
+        // ========================================
         // CATEGORY PROFILE FORM SUBMISSION
         // ========================================
         $('.rfm-category-profile-form').on('submit', function(e) {
