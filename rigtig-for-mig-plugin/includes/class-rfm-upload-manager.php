@@ -78,8 +78,8 @@ class RFM_Upload_Manager {
                 }
             }
 
-            // Expert profile image upload
-            if ($action === 'rfm_upload_expert_avatar' || $action === 'rfm_upload_expert_image') {
+            // Expert profile image and banner upload
+            if ($action === 'rfm_upload_expert_avatar' || $action === 'rfm_upload_expert_banner' || $action === 'rfm_upload_expert_image') {
                 $post_id = $this->get_current_post_id();
                 if ($post_id) {
                     $custom_dir = '/rfm/experts/' . $post_id;
@@ -129,6 +129,11 @@ class RFM_Upload_Manager {
      * @return int|false Post ID or false
      */
     private function get_current_post_id() {
+        // Check $_POST for expert_id (new dashboard AJAX handlers)
+        if (isset($_POST['expert_id']) && intval($_POST['expert_id']) > 0) {
+            return intval($_POST['expert_id']);
+        }
+
         // Check $_POST for post_id (media upload via meta box)
         if (isset($_POST['post_id']) && intval($_POST['post_id']) > 0) {
             return intval($_POST['post_id']);
@@ -172,6 +177,21 @@ class RFM_Upload_Manager {
 
                 error_log("RFM Upload: Tagged user avatar $attachment_id for user $user_id");
                 return;
+            }
+
+            // Check if this is an expert avatar or banner upload
+            if ($action === 'rfm_upload_expert_avatar' || $action === 'rfm_upload_expert_banner') {
+                $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+                if ($expert_id > 0) {
+                    $upload_type = ($action === 'rfm_upload_expert_banner') ? 'banner' : 'avatar';
+                    update_post_meta($attachment_id, '_rfm_owner_type', 'rfm_expert');
+                    update_post_meta($attachment_id, '_rfm_owner_id', $expert_id);
+                    update_post_meta($attachment_id, '_rfm_upload_type', $upload_type);
+                    update_post_meta($attachment_id, '_rfm_upload_date', current_time('mysql'));
+
+                    error_log("RFM Upload: Tagged expert $upload_type $attachment_id for expert $expert_id");
+                    return;
+                }
             }
         }
 
