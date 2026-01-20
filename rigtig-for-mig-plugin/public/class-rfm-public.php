@@ -175,7 +175,17 @@ class RFM_Public {
         // Build extended search query
         $search_parts = array();
 
-        // 1. Search in taxonomies (rfm_category, rfm_specialization)
+        // 1. Explicit search in post_title (to handle special characters like "—")
+        $search_parts[] = $wpdb->prepare("
+            {$wpdb->posts}.post_title LIKE %s
+        ", $like);
+
+        // 2. Search in post_content
+        $search_parts[] = $wpdb->prepare("
+            {$wpdb->posts}.post_content LIKE %s
+        ", $like);
+
+        // 3. Search in taxonomies (rfm_category, rfm_specialization)
         $search_parts[] = $wpdb->prepare("
             {$wpdb->posts}.ID IN (
                 SELECT DISTINCT tr.object_id
@@ -187,7 +197,7 @@ class RFM_Public {
             )
         ", $like);
 
-        // 2. Search in meta fields (_rfm_about_me)
+        // 4. Search in meta fields (_rfm_about_me)
         $search_parts[] = $wpdb->prepare("
             {$wpdb->posts}.ID IN (
                 SELECT DISTINCT post_id
@@ -197,16 +207,12 @@ class RFM_Public {
             )
         ", $like);
 
-        // Combine with OR
+        // Combine all search parts with OR
         $extended_search = '(' . implode(' OR ', $search_parts) . ')';
 
-        // Append to existing search (which already searches post_title and post_content)
-        if (!empty($search)) {
-            $search = preg_replace('/^\s*AND\s*/', '', $search);
-            $search = " AND ({$search} OR {$extended_search}) ";
-        } else {
-            $search = " AND {$extended_search} ";
-        }
+        // Replace the default WordPress search with our custom search
+        // We handle post_title and post_content ourselves now to support special characters
+        $search = " AND {$extended_search} ";
 
         return $search;
     }
