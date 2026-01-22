@@ -92,8 +92,13 @@ class RFM_Public {
 
                 // If radius is specified, use coordinate-based search
                 if ($radius > 0) {
-                    // Try to get coordinates from postal code
+                    // Try to get coordinates from postal code first
                     $coordinates = RFM_Postal_Codes::get_coordinates($location);
+
+                    // If not found as postal code, try searching by city name
+                    if (!$coordinates && class_exists('RFM_Postal_Codes')) {
+                        $coordinates = RFM_Postal_Codes::get_coordinates_by_city($location);
+                    }
 
                     if ($coordinates) {
                         // Find experts within radius
@@ -110,7 +115,7 @@ class RFM_Public {
                             $query->set('post__in', array(0));
                         }
                     } else {
-                        // Invalid postal code - fall back to city search
+                        // Invalid postal code and city not found - fall back to city search
                         $meta_query = $query->get('meta_query') ?: array();
                         $meta_query[] = array(
                             'key' => '_rfm_city',
@@ -160,7 +165,7 @@ class RFM_Public {
         global $wpdb;
 
         // Only modify expert searches with a search term
-        if (empty($search) || !$query->is_search() || get_query_var('post_type') !== 'rfm_expert') {
+        if (empty($search) || !$query->is_search() || $query->get('post_type') !== 'rfm_expert') {
             return $search;
         }
 

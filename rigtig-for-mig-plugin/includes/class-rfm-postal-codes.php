@@ -748,4 +748,46 @@ class RFM_Postal_Codes {
 
         return round($distance, 2);
     }
+
+    /**
+     * Find coordinates by city name (searches postal codes database)
+     * Returns the first matching postal code's coordinates
+     *
+     * @param string $city_name City name to search for
+     * @return array|null Array with 'latitude' and 'longitude' or null if not found
+     */
+    public static function get_coordinates_by_city($city_name) {
+        $city_name = trim($city_name);
+        if (empty($city_name)) {
+            return null;
+        }
+
+        $all_codes = self::get_all_postal_codes();
+
+        // Try exact match first (case-insensitive)
+        foreach ($all_codes as $code_data) {
+            if (strcasecmp($code_data['city'], $city_name) === 0) {
+                return array(
+                    'latitude' => $code_data['latitude'],
+                    'longitude' => $code_data['longitude'],
+                    'postal_code' => $code_data['postal_code'],
+                    'city' => $code_data['city']
+                );
+            }
+        }
+
+        // Try partial match (case-insensitive)
+        foreach ($all_codes as $code_data) {
+            if (stripos($code_data['city'], $city_name) !== false) {
+                return array(
+                    'latitude' => $code_data['latitude'],
+                    'longitude' => $code_data['longitude'],
+                    'postal_code' => $code_data['postal_code'],
+                    'city' => $code_data['city']
+                );
+            }
+        }
+
+        return null;
+    }
 }
