@@ -70,13 +70,25 @@ class RFM_Public {
         if (is_admin() || !$query->is_main_query()) {
             return;
         }
-        
+
+        // Debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('RFM: modify_expert_query called');
+            error_log('RFM: is_search: ' . ($query->is_search() ? 'YES' : 'NO'));
+            error_log('RFM: post_type: ' . $query->get('post_type'));
+            error_log('RFM: search term: ' . $query->get('s'));
+        }
+
         // Expert archive or search
         if ($query->is_post_type_archive('rfm_expert') || (is_search() && $query->get('post_type') === 'rfm_expert')) {
 
             // Set posts per page for search results (show all results)
             if ($query->is_search()) {
                 $query->set('posts_per_page', -1); // Show all results for search
+
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('RFM: Set posts_per_page to -1 for search');
+                }
             }
 
             // Category filter

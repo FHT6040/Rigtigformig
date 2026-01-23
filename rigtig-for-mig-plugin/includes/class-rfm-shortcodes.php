@@ -38,13 +38,24 @@ class RFM_Shortcodes {
             'columns' => 3,
             'debug' => false
         ), $atts);
-        
+
+        // Check if we're on a search results page
+        $is_search = (isset($_GET['s']) && !empty($_GET['s'])) ||
+                     (isset($_GET['rfm_category']) && !empty($_GET['rfm_category'])) ||
+                     (isset($_GET['rfm_location']) && !empty($_GET['rfm_location']));
+
         $args = array(
             'post_type' => 'rfm_expert',
-            'posts_per_page' => intval($atts['limit']),
+            // Show all results if searching, otherwise use limit
+            'posts_per_page' => $is_search ? -1 : intval($atts['limit']),
             'post_status' => 'publish'
         );
-        
+
+        // Add search parameter if present
+        if (isset($_GET['s']) && !empty($_GET['s'])) {
+            $args['s'] = sanitize_text_field($_GET['s']);
+        }
+
         if ($atts['category']) {
             $args['tax_query'] = array(
                 array(
@@ -54,11 +65,96 @@ class RFM_Shortcodes {
                 )
             );
         }
-        
+
+        // Add category filter from URL if present
+        if (isset($_GET['rfm_category']) && !empty($_GET['rfm_category'])) {
+            if (!isset($args['tax_query'])) {
+                $args['tax_query'] = array();
+            }
+            $args['tax_query'][] = array(
+                'taxonomy' => 'rfm_category',
+                'field' => 'slug',
+                'terms' => sanitize_text_field($_GET['rfm_category'])
+            );
+        }
+
+        // Add location filter from URL if present
+        if (isset($_GET['rfm_location']) && !empty($_GET['rfm_location'])) {
+            $location = sanitize_text_field($_GET['rfm_location']);
+            $radius = isset($_GET['rfm_radius']) ? floatval($_GET['rfm_radius']) : 0;
+
+            if ($radius > 0 && class_exists('RFM_Postal_Codes')) {
+                // Try to get coordinates from postal code first
+                $coordinates = RFM_Postal_Codes::get_coordinates($location);
+
+                // If not found as postal code, try searching by city name
+                if (!$coordinates) {
+                    $coordinates = RFM_Postal_Codes::get_coordinates_by_city($location);
+                }
+
+                if ($coordinates && class_exists('RFM_Public')) {
+                    // Use the find_experts_within_radius method from RFM_Public
+                    // We need to filter posts after query
+                    $args['_rfm_location_filter'] = array(
+                        'latitude' => $coordinates['latitude'],
+                        'longitude' => $coordinates['longitude'],
+                        'radius' => $radius
+                    );
+                } else {
+                    // Fall back to city name search
+                    if (!isset($args['meta_query'])) {
+                        $args['meta_query'] = array();
+                    }
+                    $args['meta_query'][] = array(
+                        'key' => '_rfm_city',
+                        'value' => $location,
+                        'compare' => 'LIKE'
+                    );
+                }
+            } else {
+                // No radius specified - search by city name
+                if (!isset($args['meta_query'])) {
+                    $args['meta_query'] = array();
+                }
+                $args['meta_query'][] = array(
+                    'key' => '_rfm_city',
+                    'value' => $location,
+                    'compare' => 'LIKE'
+                );
+            }
+        }
+
         // Sort by rating or date
         // Note: We always fetch all posts and sort them to include experts without ratings
 
         $query = new WP_Query($args);
+
+        // Apply location radius filter if needed
+        if (isset($args['_rfm_location_filter']) && $query->have_posts()) {
+            $filter = $args['_rfm_location_filter'];
+            $filtered_posts = array();
+
+            foreach ($query->posts as $post) {
+                $lat = get_post_meta($post->ID, '_rfm_latitude', true);
+                $lng = get_post_meta($post->ID, '_rfm_longitude', true);
+
+                if (!empty($lat) && !empty($lng) && class_exists('RFM_Postal_Codes')) {
+                    $distance = RFM_Postal_Codes::calculate_distance(
+                        $filter['latitude'],
+                        $filter['longitude'],
+                        floatval($lat),
+                        floatval($lng)
+                    );
+
+                    if ($distance <= $filter['radius']) {
+                        $filtered_posts[] = $post;
+                    }
+                }
+            }
+
+            $query->posts = $filtered_posts;
+            $query->post_count = count($filtered_posts);
+        }
 
         // If sorting by rating, manually sort the posts array to include experts without ratings
         if ($atts['orderby'] === 'rating' && $query->have_posts()) {
