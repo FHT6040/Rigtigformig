@@ -72,8 +72,13 @@ class RFM_Public {
         }
         
         // Expert archive or search
-        if ($query->is_post_type_archive('rfm_expert') || (is_search() && get_query_var('post_type') === 'rfm_expert')) {
-            
+        if ($query->is_post_type_archive('rfm_expert') || (is_search() && $query->get('post_type') === 'rfm_expert')) {
+
+            // Set posts per page for search results (show all results)
+            if ($query->is_search()) {
+                $query->set('posts_per_page', -1); // Show all results for search
+            }
+
             // Category filter
             if (isset($_GET['rfm_category']) && !empty($_GET['rfm_category'])) {
                 $tax_query = $query->get('tax_query') ?: array();
