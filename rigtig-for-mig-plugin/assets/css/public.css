@@ -3156,3 +3156,189 @@ body.rfm-expert-user.admin-bar {
         margin-left: 0;
     }
 }
+
+/* =================================================================
+   BOOKING BUTTON STYLES (v3.9.8)
+   ================================================================= */
+
+/* Booking Button on Expert Profile */
+.rfm-btn-booking {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white !important;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none !important;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.rfm-btn-booking:hover {
+    background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+    color: white !important;
+    text-decoration: none !important;
+}
+
+.rfm-btn-booking:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+}
+
+.rfm-btn-booking i.dashicons {
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* Profile Actions - Multiple Buttons */
+.rfm-profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.rfm-profile-actions .rfm-btn {
+    margin-top: 0;
+}
+
+/* Booking Settings in Dashboard */
+.rfm-booking-settings {
+    padding: 20px 0;
+}
+
+.rfm-booking-settings h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    font-size: 1.3em;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 10px;
+}
+
+.rfm-booking-settings .rfm-form-description {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.rfm-booking-settings .rfm-form-group {
+    margin-bottom: 20px;
+}
+
+.rfm-booking-settings .rfm-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.rfm-booking-settings .rfm-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.rfm-booking-settings .rfm-checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.rfm-booking-settings .rfm-form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.rfm-booking-settings .rfm-form-control:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.rfm-booking-settings .rfm-form-hint {
+    display: block;
+    margin-top: 6px;
+    color: #888;
+    font-size: 12px;
+}
+
+.rfm-booking-settings .rfm-form-actions {
+    margin-top: 25px;
+}
+
+.rfm-booking-settings .rfm-form-message {
+    margin-top: 15px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.rfm-booking-settings .rfm-form-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.rfm-booking-settings .rfm-form-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Upgrade Notice */
+.rfm-upgrade-notice {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-left: 4px solid #ffc107;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.rfm-upgrade-notice p {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 14px;
+}
+
+.rfm-upgrade-notice i.dashicons {
+    color: #ffc107;
+    font-size: 20px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Responsive Booking Styles */
+@media (max-width: 768px) {
+    .rfm-profile-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .rfm-profile-actions .rfm-btn,
+    .rfm-profile-actions .rfm-btn-booking {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .rfm-booking-settings .rfm-form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+}

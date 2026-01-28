@@ -188,20 +188,28 @@ class RFM_Expert_Profile {
                             </div>
                             <?php
                         } else {
-                            // Show "Send Message" button for other logged-in users
+                            // Show "Send Message" button and Booking button for other logged-in users
                             ?>
                             <div class="rfm-profile-actions">
                                 <button type="button" id="rfm-send-message-btn" class="rfm-btn rfm-btn-primary" data-expert-id="<?php echo esc_attr($expert_id); ?>">
                                     <i class="dashicons dashicons-email-alt"></i>
                                     <?php _e('Send besked', 'rigtig-for-mig'); ?>
                                 </button>
+                                <?php
+                                // Show booking button if enabled
+                                echo RFM_Booking_Link::get_instance()->render_booking_button($expert_id);
+                                ?>
                             </div>
                             <?php
                         }
                     } else {
-                        // Show login prompt for non-logged-in users
+                        // Show login prompt for non-logged-in users, but still show booking button
                         ?>
                         <div class="rfm-profile-actions">
+                            <?php
+                            // Show booking button even for non-logged-in users (opens external link)
+                            echo RFM_Booking_Link::get_instance()->render_booking_button($expert_id);
+                            ?>
                             <p class="rfm-login-prompt">
                                 <?php _e('Log ind for at sende en besked til denne ekspert', 'rigtig-for-mig'); ?>
                                 <a href="<?php echo home_url('/login/?redirect_to=' . urlencode(get_permalink())); ?>" class="rfm-btn rfm-btn-secondary">

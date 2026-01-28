@@ -164,6 +164,10 @@ switch ($action) {
         rfm_direct_heartbeat();
         break;
 
+    case 'rfm_save_booking_settings':
+        rfm_direct_save_booking_settings();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -1583,5 +1587,73 @@ function rfm_direct_heartbeat() {
         'timestamp' => $timestamp,
         'user_id' => $user_id
     ));
+    exit;
+}
+
+/**
+ * Handle saving booking settings for experts
+ *
+ * @since 3.9.8
+ */
+function rfm_direct_save_booking_settings() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    if (empty($nonce)) {
+        $nonce = isset($_POST['rfm_tabbed_nonce']) ? sanitize_text_field($_POST['rfm_tabbed_nonce']) : '';
+    }
+
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede. Genindlæs siden og prøv igen.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+
+    // Verify ownership
+    $post = get_post($expert_id);
+    if (!$post || $post->post_author != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    // Check if expert has booking feature
+    if (!RFM_Subscriptions::can_use_feature($expert_id, 'booking')) {
+        wp_send_json_error(array('message' => 'Booking kræver Standard eller Premium abonnement.'), 403);
+        exit;
+    }
+
+    // Prepare booking data
+    $booking_data = array(
+        'booking_url' => isset($_POST['booking_url']) ? esc_url_raw($_POST['booking_url']) : '',
+        'booking_button_text' => isset($_POST['booking_button_text']) ? sanitize_text_field($_POST['booking_button_text']) : '',
+        'booking_enabled' => isset($_POST['booking_enabled']) && ($_POST['booking_enabled'] === '1' || $_POST['booking_enabled'] === 'true')
+    );
+
+    // Save booking settings
+    if (class_exists('RFM_Booking_Link')) {
+        $result = RFM_Booking_Link::get_instance()->save_booking_settings($expert_id, $booking_data);
+
+        if ($result) {
+            wp_send_json_success(array(
+                'message' => '✅ Booking-indstillinger gemt!'
+            ));
+        } else {
+            wp_send_json_error(array(
+                'message' => 'Kunne ikke gemme booking-indstillinger.'
+            ));
+        }
+    } else {
+        wp_send_json_error(array(
+            'message' => 'Booking-systemet er ikke tilgængeligt.'
+        ));
+    }
     exit;
 }

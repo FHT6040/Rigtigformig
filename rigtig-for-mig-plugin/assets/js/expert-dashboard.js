@@ -759,6 +759,56 @@
         }
 
         // ========================================
+        // BOOKING SETTINGS HANDLER (v3.9.8)
+        // ========================================
+        $('#rfm-save-booking-settings').on('click', function(e) {
+            e.preventDefault();
+
+            var $button = $(this);
+            var $message = $('#rfm-booking-message');
+            var expertId = $('input[name="expert_id"]').val();
+            var nonce = $('input[name="rfm_tabbed_nonce"]').val();
+
+            // Get booking form values
+            var bookingEnabled = $('#rfm-booking-enabled').is(':checked') ? '1' : '0';
+            var bookingUrl = $('#rfm-booking-url').val();
+            var bookingButtonText = $('#rfm-booking-button-text').val();
+
+            // Disable button
+            $button.prop('disabled', true).html('<i class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></i> Gemmer...');
+            $message.hide().removeClass('success error');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_save_booking_settings',
+                    nonce: nonce,
+                    expert_id: expertId,
+                    booking_enabled: bookingEnabled,
+                    booking_url: bookingUrl,
+                    booking_button_text: bookingButtonText
+                },
+                success: function(response) {
+                    console.log('Booking settings response:', response);
+
+                    if (response.success) {
+                        $message.html(response.data.message).addClass('success').show();
+                    } else {
+                        $message.html(response.data.message || 'Der opstod en fejl.').addClass('error').show();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.log('Booking settings error:', error);
+                    $message.html('Der opstod en fejl. Prøv igen.').addClass('error').show();
+                },
+                complete: function() {
+                    $button.prop('disabled', false).html('<i class="dashicons dashicons-yes"></i> Gem booking-indstillinger');
+                }
+            });
+        });
+
+        // ========================================
         // LOGOUT HANDLER
         // ========================================
         $('#rfm-logout-btn').on('click', function(e) {
