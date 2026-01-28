@@ -25,6 +25,7 @@ class RFM_Public {
         add_filter('posts_search', array($this, 'extend_expert_search'), 10, 2);
         add_action('template_redirect', array($this, 'handle_expert_actions'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
+        add_filter('template_include', array($this, 'load_expert_archive_template'));
     }
     
     /**
@@ -315,6 +316,28 @@ class RFM_Public {
         }
 
         return $expert_ids;
+    }
+
+    /**
+     * Load custom archive template for rfm_expert post type
+     *
+     * This ensures that search results and archives for rfm_expert
+     * use our custom template with the shortcode
+     *
+     * @param string $template The path to the template to include
+     * @return string Modified template path
+     */
+    public function load_expert_archive_template($template) {
+        // Only for rfm_expert post type archives and searches
+        if (is_post_type_archive('rfm_expert') || (is_search() && get_query_var('post_type') === 'rfm_expert')) {
+            $custom_template = RFM_PLUGIN_DIR . 'templates/archive-rfm_expert.php';
+
+            if (file_exists($custom_template)) {
+                return $custom_template;
+            }
+        }
+
+        return $template;
     }
 
     /**
