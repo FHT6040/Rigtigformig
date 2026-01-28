@@ -204,7 +204,7 @@ class RFM_Expert_Profile {
                         <div class="rfm-profile-actions">
                             <p class="rfm-login-prompt">
                                 <?php _e('Log ind for at sende en besked til denne ekspert', 'rigtig-for-mig'); ?>
-                                <a href="<?php echo wp_login_url(get_permalink()); ?>" class="rfm-btn rfm-btn-secondary">
+                                <a href="<?php echo home_url('/login/?redirect_to=' . urlencode(get_permalink())); ?>" class="rfm-btn rfm-btn-secondary">
                                     <?php _e('Log ind', 'rigtig-for-mig'); ?>
                                 </a>
                             </p>
