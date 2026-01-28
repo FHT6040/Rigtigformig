@@ -565,4 +565,43 @@
         });
     });
 
+    // ========================================
+    // USER BOOKING CANCEL (v3.10.0)
+    // ========================================
+    $(document).on('click', '.rfm-btn-user-cancel-booking', function() {
+        if (!confirm('Er du sikker på du vil annullere denne booking?')) return;
+
+        var bookingId = $(this).data('id');
+        var $card = $(this).closest('.rfm-booking-card');
+        var $btn = $(this);
+        var ajaxUrl = (typeof rfmUserDashboard !== 'undefined') ? rfmUserDashboard.ajaxurl : '';
+        var nonce = (typeof rfmUserDashboard !== 'undefined') ? rfmUserDashboard.nonce : '';
+
+        $btn.prop('disabled', true).html('<i class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></i>');
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'rfm_cancel_user_booking',
+                nonce: nonce,
+                booking_id: bookingId
+            },
+            success: function(response) {
+                if (response.success) {
+                    $card.find('.rfm-booking-status').removeClass('rfm-status-pending').addClass('rfm-status-cancelled').text('Aflyst');
+                    $card.find('.rfm-booking-card-actions').remove();
+                    $card.removeClass('rfm-booking-pending').addClass('rfm-booking-cancelled');
+                } else {
+                    alert(response.data.message || 'Fejl');
+                    $btn.prop('disabled', false).html('<i class="dashicons dashicons-no"></i> Annuller');
+                }
+            },
+            error: function() {
+                alert('Netværksfejl. Prøv igen.');
+                $btn.prop('disabled', false).html('<i class="dashicons dashicons-no"></i> Annuller');
+            }
+        });
+    });
+
 })(jQuery);

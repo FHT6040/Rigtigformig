@@ -53,6 +53,7 @@ class RFM_Public {
         wp_localize_script('rfm-public', 'rfmData', array(
             'ajaxurl' => RFM_PLUGIN_URL . 'ajax-handler.php',
             'nonce' => wp_create_nonce('rfm_nonce'),
+            'bookingNonce' => wp_create_nonce('rfm_booking_nonce'),
             'strings' => array(
                 'loading' => __('Indlæser...', 'rigtig-for-mig'),
                 'error' => __('Der opstod en fejl', 'rigtig-for-mig'),

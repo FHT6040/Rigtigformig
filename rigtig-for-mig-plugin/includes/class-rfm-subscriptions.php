@@ -60,7 +60,8 @@ class RFM_Subscriptions {
                     __('Op til 3 kategorier', 'rigtig-for-mig'),
                     __('Featured badge', 'rigtig-for-mig'),
                     __('Basis statistik', 'rigtig-for-mig'),
-                    __('Besked system', 'rigtig-for-mig')
+                    __('Besked system', 'rigtig-for-mig'),
+                    __('Booking link', 'rigtig-for-mig')
                 )
             ),
             self::PLAN_PREMIUM => array(
@@ -298,7 +299,7 @@ class RFM_Subscriptions {
             'unlimited_categories' => array(self::PLAN_PREMIUM),
             'featured_badge' => array(self::PLAN_STANDARD, self::PLAN_PREMIUM),
             'messaging' => array(self::PLAN_STANDARD, self::PLAN_PREMIUM),
-            'booking' => array(self::PLAN_PREMIUM),
+            'booking' => array(self::PLAN_STANDARD, self::PLAN_PREMIUM),
             'top_placement' => array(self::PLAN_PREMIUM)
         );
         

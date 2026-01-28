@@ -445,6 +445,16 @@ class RFM_Expert_Dashboard {
                         <i class="dashicons dashicons-email-alt"></i> <?php _e('Beskeder', 'rigtig-for-mig'); ?>
                         <span class="rfm-unread-count" id="rfm-expert-unread-count" style="display: none;"></span>
                     </button>
+                    <?php if (RFM_Subscriptions::can_use_feature($expert_id, 'booking')): ?>
+                    <button type="button" class="rfm-tab-btn" data-tab="booking">
+                        <i class="dashicons dashicons-calendar-alt"></i> <?php _e('Booking', 'rigtig-for-mig'); ?>
+                        <?php
+                        $pending_count = RFM_Booking::get_instance()->count_pending($expert_id);
+                        if ($pending_count > 0): ?>
+                        <span class="rfm-badge rfm-badge-warning"><?php echo $pending_count; ?></span>
+                        <?php endif; ?>
+                    </button>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Global Message Area -->
@@ -790,6 +800,13 @@ class RFM_Expert_Dashboard {
                         </div>
                     </div>
                 </div>
+
+                <?php if (RFM_Subscriptions::can_use_feature($expert_id, 'booking')): ?>
+                <!-- Tab Content: Booking -->
+                <div class="rfm-tab-content" data-tab-content="booking">
+                    <?php echo RFM_Booking::get_instance()->render_expert_bookings_dashboard($expert_id); ?>
+                </div>
+                <?php endif; ?>
 
                 <!-- Education Template for Category Profiles -->
                 <template id="rfm-category-education-template">
