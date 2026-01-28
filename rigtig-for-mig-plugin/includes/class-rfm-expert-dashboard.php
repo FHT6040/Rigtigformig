@@ -448,6 +448,11 @@ class RFM_Expert_Dashboard {
                     <?php if (RFM_Subscriptions::can_use_feature($expert_id, 'booking')): ?>
                     <button type="button" class="rfm-tab-btn" data-tab="booking">
                         <i class="dashicons dashicons-calendar-alt"></i> <?php _e('Booking', 'rigtig-for-mig'); ?>
+                        <?php
+                        $pending_count = RFM_Booking::get_instance()->count_pending($expert_id);
+                        if ($pending_count > 0): ?>
+                        <span class="rfm-badge rfm-badge-warning"><?php echo $pending_count; ?></span>
+                        <?php endif; ?>
                     </button>
                     <?php endif; ?>
                 </div>
@@ -799,7 +804,7 @@ class RFM_Expert_Dashboard {
                 <?php if (RFM_Subscriptions::can_use_feature($expert_id, 'booking')): ?>
                 <!-- Tab Content: Booking -->
                 <div class="rfm-tab-content" data-tab-content="booking">
-                    <?php echo RFM_Booking_Link::get_instance()->render_booking_settings_form($expert_id); ?>
+                    <?php echo RFM_Booking::get_instance()->render_expert_bookings_dashboard($expert_id); ?>
                 </div>
                 <?php endif; ?>
 

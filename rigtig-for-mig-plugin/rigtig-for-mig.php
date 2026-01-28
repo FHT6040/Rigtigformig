@@ -3,7 +3,7 @@
  * Plugin Name: Rigtig for mig - Ekspert Markedsplads
  * Plugin URI: https://rigtigformig.dk
  * Description: En komplet markedsplads for terapeuter, coaches, mentorer og vejledere med profilsider, ratings, abonnementer og multi-language support.
- * Version: 3.9.8
+ * Version: 3.10.0
  * Author: Rigtig for mig
  * Author URI: https://rigtigformig.dk
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('RFM_VERSION', '3.9.8');
+define('RFM_VERSION', '3.10.0');
 define('RFM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RFM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RFM_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -97,6 +97,8 @@ class Rigtig_For_Mig {
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-online-status.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-category-profiles.php';
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-booking-link.php'; // v3.9.8 - External booking link
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-availability.php'; // v3.10.0 - Availability management
+        require_once RFM_PLUGIN_DIR . 'includes/class-rfm-booking.php';      // v3.10.0 - Internal booking system
 
         // User system classes
         require_once RFM_PLUGIN_DIR . 'includes/class-rfm-user-registration.php';
@@ -286,6 +288,8 @@ class Rigtig_For_Mig {
         RFM_Online_Status::get_instance();
         RFM_Category_Profiles::get_instance();
         RFM_Booking_Link::get_instance(); // v3.9.8 - External booking link
+        RFM_Availability::get_instance();  // v3.10.0 - Availability management
+        RFM_Booking::get_instance();       // v3.10.0 - Internal booking system
 
         // Initialize user system
         RFM_User_Registration::get_instance();

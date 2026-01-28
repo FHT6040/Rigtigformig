@@ -168,6 +168,30 @@ switch ($action) {
         rfm_direct_save_booking_settings();
         break;
 
+    case 'rfm_save_internal_booking_settings':
+        rfm_direct_save_internal_booking_settings();
+        break;
+
+    case 'rfm_get_available_slots':
+        rfm_direct_get_available_slots();
+        break;
+
+    case 'rfm_create_booking':
+        rfm_direct_create_booking();
+        break;
+
+    case 'rfm_update_booking_status':
+        rfm_direct_update_booking_status();
+        break;
+
+    case 'rfm_cancel_user_booking':
+        rfm_direct_cancel_user_booking();
+        break;
+
+    case 'rfm_get_available_days':
+        rfm_direct_get_available_days();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -1654,6 +1678,302 @@ function rfm_direct_save_booking_settings() {
         wp_send_json_error(array(
             'message' => 'Booking-systemet er ikke tilgængeligt.'
         ));
+    }
+    exit;
+}
+
+/**
+ * Save internal booking settings (mode, availability, duration)
+ *
+ * @since 3.10.0
+ */
+function rfm_direct_save_internal_booking_settings() {
+    ob_end_clean();
+
+    // Verify nonce
+    $nonce = sanitize_text_field($_POST['nonce'] ?? $_POST['rfm_tabbed_nonce'] ?? '');
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = intval($_POST['expert_id'] ?? 0);
+
+    // Verify ownership
+    $post = get_post($expert_id);
+    if (!$post || $post->post_author != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    if (!RFM_Subscriptions::can_use_feature($expert_id, 'booking')) {
+        wp_send_json_error(array('message' => 'Booking kræver Standard eller Premium abonnement.'), 403);
+        exit;
+    }
+
+    // Save booking mode
+    $mode = sanitize_text_field($_POST['booking_mode'] ?? 'external');
+    if (!in_array($mode, array('external', 'internal'))) {
+        $mode = 'external';
+    }
+    update_post_meta($expert_id, '_rfm_booking_mode', $mode);
+
+    // Save duration
+    $duration = intval($_POST['booking_duration'] ?? 60);
+    if (!in_array($duration, array(30, 45, 60, 90, 120))) {
+        $duration = 60;
+    }
+    update_post_meta($expert_id, '_rfm_booking_duration', $duration);
+
+    // Save availability schedule
+    if (isset($_POST['availability']) && is_array($_POST['availability'])) {
+        $schedule = array();
+        foreach ($_POST['availability'] as $entry) {
+            $day = intval($entry['day_of_week'] ?? 0);
+            $start = sanitize_text_field($entry['start_time'] ?? '');
+            $end = sanitize_text_field($entry['end_time'] ?? '');
+            $active = !empty($entry['is_active']) ? 1 : 0;
+
+            if ($day >= 1 && $day <= 7 && !empty($start) && !empty($end)) {
+                $schedule[] = array(
+                    'day_of_week' => $day,
+                    'start_time'  => $start,
+                    'end_time'    => $end,
+                    'is_active'   => $active,
+                );
+            }
+        }
+        RFM_Availability::get_instance()->save_availability($expert_id, $schedule);
+    }
+
+    // If mode is internal, also enable booking flag
+    if ($mode === 'internal') {
+        update_post_meta($expert_id, '_rfm_booking_enabled', '1');
+    }
+
+    wp_send_json_success(array('message' => 'Booking-indstillinger gemt!'));
+    exit;
+}
+
+/**
+ * Get available time slots for a given expert and date
+ *
+ * @since 3.10.0
+ */
+function rfm_direct_get_available_slots() {
+    ob_end_clean();
+
+    $expert_id = intval($_GET['expert_id'] ?? $_POST['expert_id'] ?? 0);
+    $date = sanitize_text_field($_GET['date'] ?? $_POST['date'] ?? '');
+
+    if (!$expert_id || !$date) {
+        wp_send_json_error(array('message' => 'Manglende data.'), 400);
+        exit;
+    }
+
+    // Validate date format
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        wp_send_json_error(array('message' => 'Ugyldigt datoformat.'), 400);
+        exit;
+    }
+
+    // Don't allow past dates
+    if ($date < current_time('Y-m-d')) {
+        wp_send_json_success(array('slots' => array()));
+        exit;
+    }
+
+    $duration = (int) get_post_meta($expert_id, '_rfm_booking_duration', true);
+    if (!$duration) $duration = 60;
+
+    $slots = RFM_Availability::get_instance()->get_available_slots($expert_id, $date, $duration);
+
+    wp_send_json_success(array('slots' => $slots, 'duration' => $duration));
+    exit;
+}
+
+/**
+ * Get available days of week for an expert
+ *
+ * @since 3.10.0
+ */
+function rfm_direct_get_available_days() {
+    ob_end_clean();
+
+    $expert_id = intval($_GET['expert_id'] ?? $_POST['expert_id'] ?? 0);
+
+    if (!$expert_id) {
+        wp_send_json_error(array('message' => 'Manglende data.'), 400);
+        exit;
+    }
+
+    $days = RFM_Availability::get_instance()->get_available_days($expert_id);
+
+    wp_send_json_success(array('days' => $days));
+    exit;
+}
+
+/**
+ * Create a new booking
+ *
+ * @since 3.10.0
+ */
+function rfm_direct_create_booking() {
+    ob_end_clean();
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind for at booke.'), 401);
+        exit;
+    }
+
+    // Verify nonce
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_booking_nonce')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $expert_id = intval($_POST['expert_id'] ?? 0);
+    $date = sanitize_text_field($_POST['booking_date'] ?? '');
+    $time = sanitize_text_field($_POST['booking_time'] ?? '');
+    $duration = intval($_POST['duration'] ?? 60);
+    $note = sanitize_textarea_field($_POST['note'] ?? '');
+
+    if (!$expert_id || !$date || !$time) {
+        wp_send_json_error(array('message' => 'Manglende booking-data.'), 400);
+        exit;
+    }
+
+    // Prevent booking own profile
+    $post = get_post($expert_id);
+    if ($post && $post->post_author == $user_id) {
+        wp_send_json_error(array('message' => 'Du kan ikke booke din egen profil.'), 400);
+        exit;
+    }
+
+    $booking_id = RFM_Booking::get_instance()->create_booking(
+        $expert_id, $user_id, $date, $time, $duration, $note
+    );
+
+    if ($booking_id) {
+        wp_send_json_success(array(
+            'message' => 'Din booking-anmodning er sendt! Du får besked når eksperten svarer.',
+            'booking_id' => $booking_id,
+        ));
+    } else {
+        wp_send_json_error(array(
+            'message' => 'Kunne ikke oprette booking. Tidspunktet er muligvis ikke tilgængeligt.'
+        ));
+    }
+    exit;
+}
+
+/**
+ * Update booking status (expert confirms/cancels)
+ *
+ * @since 3.10.0
+ */
+function rfm_direct_update_booking_status() {
+    ob_end_clean();
+
+    $nonce = sanitize_text_field($_POST['nonce'] ?? $_POST['rfm_tabbed_nonce'] ?? '');
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_dashboard_tabbed')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $booking_id = intval($_POST['booking_id'] ?? 0);
+    $status = sanitize_text_field($_POST['status'] ?? '');
+    $expert_note = sanitize_textarea_field($_POST['expert_note'] ?? '');
+
+    if (!$booking_id || !$status) {
+        wp_send_json_error(array('message' => 'Manglende data.'), 400);
+        exit;
+    }
+
+    // Get booking and verify expert ownership
+    $booking = RFM_Booking::get_instance()->get_booking($booking_id);
+    if (!$booking) {
+        wp_send_json_error(array('message' => 'Booking ikke fundet.'), 404);
+        exit;
+    }
+
+    $post = get_post($booking->expert_id);
+    if (!$post || $post->post_author != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    $result = RFM_Booking::get_instance()->update_status($booking_id, $status, $expert_note);
+
+    if ($result) {
+        $status_label = RFM_Booking::get_instance()->get_status_label($status);
+        wp_send_json_success(array(
+            'message' => sprintf('Booking opdateret til: %s', $status_label),
+        ));
+    } else {
+        wp_send_json_error(array('message' => 'Kunne ikke opdatere booking.'));
+    }
+    exit;
+}
+
+/**
+ * Cancel a booking (user cancels their own)
+ *
+ * @since 3.10.0
+ */
+function rfm_direct_cancel_user_booking() {
+    ob_end_clean();
+
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'rfm_user_dashboard')) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $booking_id = intval($_POST['booking_id'] ?? 0);
+
+    if (!$booking_id) {
+        wp_send_json_error(array('message' => 'Manglende data.'), 400);
+        exit;
+    }
+
+    $booking = RFM_Booking::get_instance()->get_booking($booking_id);
+    if (!$booking || $booking->user_id != $user_id) {
+        wp_send_json_error(array('message' => 'Du har ikke tilladelse.'), 403);
+        exit;
+    }
+
+    if ($booking->status !== 'pending') {
+        wp_send_json_error(array('message' => 'Kun ventende bookinger kan annulleres.'), 400);
+        exit;
+    }
+
+    $result = RFM_Booking::get_instance()->update_status($booking_id, 'cancelled');
+
+    if ($result) {
+        wp_send_json_success(array('message' => 'Booking annulleret.'));
+    } else {
+        wp_send_json_error(array('message' => 'Kunne ikke annullere booking.'));
     }
     exit;
 }

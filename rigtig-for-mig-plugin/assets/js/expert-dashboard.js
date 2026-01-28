@@ -809,6 +809,194 @@
         });
 
         // ========================================
+        // INTERNAL BOOKING SYSTEM (v3.10.0)
+        // ========================================
+
+        // Booking mode selector
+        $('input[name="booking_mode"]').on('change', function() {
+            var mode = $(this).val();
+            $('.rfm-radio-card').removeClass('active');
+            $(this).closest('.rfm-radio-card').addClass('active');
+
+            if (mode === 'internal') {
+                $('#rfm-booking-external-panel').hide();
+                $('#rfm-booking-internal-panel').show();
+            } else {
+                $('#rfm-booking-external-panel').show();
+                $('#rfm-booking-internal-panel').hide();
+            }
+        });
+
+        // Availability day toggles
+        $(document).on('change', '.rfm-day-toggle', function() {
+            var $day = $(this).closest('.rfm-availability-day');
+            var $slots = $day.find('.rfm-availability-slots');
+            if ($(this).is(':checked')) {
+                $slots.slideDown(200);
+            } else {
+                $slots.slideUp(200);
+            }
+        });
+
+        // Add time slot
+        $(document).on('click', '.rfm-add-time-slot', function() {
+            var day = $(this).data('day');
+            var $container = $(this).closest('.rfm-availability-slots');
+            var template = '<div class="rfm-time-slot-row">' +
+                '<select class="rfm-time-start" name="availability[' + day + '][start][]">';
+
+            // Generate time options
+            for (var h = 6; h <= 22; h++) {
+                for (var m = 0; m < 60; m += 30) {
+                    var time = ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+                    var sel = time === '09:00' ? ' selected' : '';
+                    template += '<option value="' + time + '"' + sel + '>' + time + '</option>';
+                }
+            }
+            template += '</select><span class="rfm-time-sep">&mdash;</span>' +
+                '<select class="rfm-time-end" name="availability[' + day + '][end][]">';
+            for (var h2 = 6; h2 <= 22; h2++) {
+                for (var m2 = 0; m2 < 60; m2 += 30) {
+                    var time2 = ('0' + h2).slice(-2) + ':' + ('0' + m2).slice(-2);
+                    var sel2 = time2 === '17:00' ? ' selected' : '';
+                    template += '<option value="' + time2 + '"' + sel2 + '>' + time2 + '</option>';
+                }
+            }
+            template += '</select>' +
+                '<button type="button" class="rfm-btn rfm-btn-small rfm-btn-danger rfm-remove-time-slot" title="Fjern">' +
+                '<i class="dashicons dashicons-no"></i></button></div>';
+
+            $(this).before(template);
+        });
+
+        // Remove time slot
+        $(document).on('click', '.rfm-remove-time-slot', function() {
+            $(this).closest('.rfm-time-slot-row').remove();
+        });
+
+        // Save internal booking settings
+        $('#rfm-save-internal-booking').on('click', function(e) {
+            e.preventDefault();
+
+            var $button = $(this);
+            var $message = $('#rfm-internal-booking-message');
+            var expertId = $('input[name="expert_id"]').val();
+            var nonce = $('input[name="rfm_tabbed_nonce"]').val();
+
+            // Collect availability data
+            var availability = [];
+            $('.rfm-availability-day').each(function() {
+                var day = $(this).data('day');
+                var isActive = $(this).find('.rfm-day-toggle').is(':checked');
+
+                if (isActive) {
+                    $(this).find('.rfm-time-slot-row').each(function() {
+                        var start = $(this).find('.rfm-time-start').val();
+                        var end = $(this).find('.rfm-time-end').val();
+                        if (start && end) {
+                            availability.push({
+                                day_of_week: day,
+                                start_time: start,
+                                end_time: end,
+                                is_active: 1
+                            });
+                        }
+                    });
+                }
+            });
+
+            var mode = $('input[name="booking_mode"]:checked').val() || 'external';
+            var duration = $('#rfm-booking-duration').val() || 60;
+
+            $button.prop('disabled', true).html('<i class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></i> Gemmer...');
+            $message.hide();
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_save_internal_booking_settings',
+                    nonce: nonce,
+                    expert_id: expertId,
+                    booking_mode: mode,
+                    booking_duration: duration,
+                    availability: availability
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $message.html('<div style="color: #4CAF50; padding: 10px; background: #e8f5e9; border-radius: 5px; margin-top: 10px;">' + response.data.message + '</div>').show();
+                    } else {
+                        $message.html('<div style="color: #e74c3c; padding: 10px; background: #fbe9e7; border-radius: 5px; margin-top: 10px;">' + (response.data.message || 'Der opstod en fejl.') + '</div>').show();
+                    }
+                },
+                error: function() {
+                    $message.html('<div style="color: #e74c3c; padding: 10px; background: #fbe9e7; border-radius: 5px; margin-top: 10px;">Netværksfejl. Prøv igen.</div>').show();
+                },
+                complete: function() {
+                    $button.prop('disabled', false).html('<i class="dashicons dashicons-yes"></i> Gem booking-indstillinger');
+                }
+            });
+        });
+
+        // Accept booking
+        $(document).on('click', '.rfm-btn-confirm-booking', function() {
+            var bookingId = $(this).data('id');
+            var $card = $(this).closest('.rfm-booking-card');
+            var nonce = $('input[name="rfm_tabbed_nonce"]').val();
+
+            $(this).prop('disabled', true).html('<i class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></i>');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_update_booking_status',
+                    nonce: nonce,
+                    booking_id: bookingId,
+                    status: 'confirmed'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $card.find('.rfm-booking-status').removeClass('rfm-status-pending').addClass('rfm-status-confirmed').text('Bekræftet');
+                        $card.find('.rfm-booking-card-actions').html('<span style="color: #4CAF50; font-weight: 600;">Bekræftet</span>');
+                        $card.removeClass('rfm-booking-pending').addClass('rfm-booking-confirmed');
+                    } else {
+                        alert(response.data.message || 'Fejl');
+                    }
+                }
+            });
+        });
+
+        // Cancel/reject booking
+        $(document).on('click', '.rfm-btn-cancel-booking', function() {
+            if (!confirm('Er du sikker på du vil afvise denne booking?')) return;
+
+            var bookingId = $(this).data('id');
+            var $card = $(this).closest('.rfm-booking-card');
+            var nonce = $('input[name="rfm_tabbed_nonce"]').val();
+
+            $(this).prop('disabled', true).html('<i class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></i>');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_update_booking_status',
+                    nonce: nonce,
+                    booking_id: bookingId,
+                    status: 'cancelled'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $card.fadeOut(300, function() { $(this).remove(); });
+                    } else {
+                        alert(response.data.message || 'Fejl');
+                    }
+                }
+            });
+        });
+
+        // ========================================
         // LOGOUT HANDLER
         // ========================================
         $('#rfm-logout-btn').on('click', function(e) {

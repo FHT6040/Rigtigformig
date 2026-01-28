@@ -54,7 +54,14 @@ class RFM_Expert_Profile {
         $profile_content .= $this->get_profile_details($expert_id);
         $profile_content .= $this->get_ratings_section($expert_id);
         $profile_content .= $this->get_message_modal($expert_id);
-        $profile_content .= RFM_Booking_Link::get_instance()->render_booking_modal($expert_id);
+
+        // Show internal booking calendar or external booking modal
+        $booking_mode = get_post_meta($expert_id, '_rfm_booking_mode', true);
+        if ($booking_mode === 'internal') {
+            $profile_content .= RFM_Booking::get_instance()->render_booking_calendar($expert_id);
+        } else {
+            $profile_content .= RFM_Booking_Link::get_instance()->render_booking_modal($expert_id);
+        }
 
         return $profile_content;
     }
@@ -197,8 +204,20 @@ class RFM_Expert_Profile {
                                     <?php _e('Send besked', 'rigtig-for-mig'); ?>
                                 </button>
                                 <?php
-                                // Show booking button if enabled
-                                echo RFM_Booking_Link::get_instance()->render_booking_button($expert_id);
+                                // Show booking button based on mode
+                                $bmode = get_post_meta($expert_id, '_rfm_booking_mode', true);
+                                if ($bmode === 'internal' && RFM_Subscriptions::can_use_feature($expert_id, 'booking')) {
+                                    $btn_text = get_post_meta($expert_id, '_rfm_booking_button_text', true);
+                                    if (empty($btn_text)) $btn_text = __('Book tid', 'rigtig-for-mig');
+                                    ?>
+                                    <a href="#rfm-booking-calendar" class="rfm-btn rfm-btn-booking">
+                                        <i class="dashicons dashicons-calendar-alt"></i>
+                                        <?php echo esc_html($btn_text); ?>
+                                    </a>
+                                    <?php
+                                } else {
+                                    echo RFM_Booking_Link::get_instance()->render_booking_button($expert_id);
+                                }
                                 ?>
                             </div>
                             <?php
@@ -208,8 +227,20 @@ class RFM_Expert_Profile {
                         ?>
                         <div class="rfm-profile-actions">
                             <?php
-                            // Show booking button even for non-logged-in users (opens external link)
-                            echo RFM_Booking_Link::get_instance()->render_booking_button($expert_id);
+                            // Show booking button even for non-logged-in users
+                            $bmode_nl = get_post_meta($expert_id, '_rfm_booking_mode', true);
+                            if ($bmode_nl === 'internal' && RFM_Subscriptions::can_use_feature($expert_id, 'booking')) {
+                                $btn_text_nl = get_post_meta($expert_id, '_rfm_booking_button_text', true);
+                                if (empty($btn_text_nl)) $btn_text_nl = __('Book tid', 'rigtig-for-mig');
+                                ?>
+                                <a href="#rfm-booking-calendar" class="rfm-btn rfm-btn-booking">
+                                    <i class="dashicons dashicons-calendar-alt"></i>
+                                    <?php echo esc_html($btn_text_nl); ?>
+                                </a>
+                                <?php
+                            } else {
+                                echo RFM_Booking_Link::get_instance()->render_booking_button($expert_id);
+                            }
                             ?>
                             <p class="rfm-login-prompt">
                                 <?php _e('Log ind for at sende en besked til denne ekspert', 'rigtig-for-mig'); ?>

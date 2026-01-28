@@ -161,11 +161,50 @@ class RFM_Database {
         
         dbDelta($sql_threads);
         
+        // Bookings table (v3.10.0)
+        $table_bookings = $wpdb->prefix . 'rfm_bookings';
+        $sql_bookings = "CREATE TABLE $table_bookings (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            expert_id bigint(20) UNSIGNED NOT NULL,
+            user_id bigint(20) UNSIGNED NOT NULL,
+            booking_date date NOT NULL,
+            booking_time time NOT NULL,
+            duration int(11) NOT NULL DEFAULT 60,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            note text,
+            expert_note text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY expert_id (expert_id),
+            KEY user_id (user_id),
+            KEY booking_date (booking_date),
+            KEY status (status)
+        ) $charset_collate;";
+
+        dbDelta($sql_bookings);
+
+        // Expert availability table (v3.10.0)
+        $table_availability = $wpdb->prefix . 'rfm_availability';
+        $sql_availability = "CREATE TABLE $table_availability (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            expert_id bigint(20) UNSIGNED NOT NULL,
+            day_of_week tinyint(1) NOT NULL,
+            start_time time NOT NULL,
+            end_time time NOT NULL,
+            is_active tinyint(1) DEFAULT 1,
+            PRIMARY KEY  (id),
+            KEY expert_id (expert_id),
+            KEY day_of_week (day_of_week)
+        ) $charset_collate;";
+
+        dbDelta($sql_availability);
+
         // Log any errors
         if (!empty($wpdb->last_error)) {
             error_log('RFM Database Error: ' . $wpdb->last_error);
         }
-        
+
         // Verify tables were created
         $tables_to_check = array(
             'rfm_ratings',
@@ -174,7 +213,9 @@ class RFM_Database {
             'rfm_subscriptions',
             'rfm_payments',
             'rfm_user_profiles',
-            'rfm_message_threads'
+            'rfm_message_threads',
+            'rfm_bookings',
+            'rfm_availability'
         );
         
         foreach ($tables_to_check as $table) {
@@ -189,7 +230,7 @@ class RFM_Database {
         }
         
         // Update database version
-        update_option('rfm_db_version', '1.1.0');
+        update_option('rfm_db_version', '1.2.0');
         
         // Hide errors again
         $wpdb->hide_errors();
@@ -208,7 +249,9 @@ class RFM_Database {
             $wpdb->prefix . 'rfm_email_verification',
             $wpdb->prefix . 'rfm_subscriptions',
             $wpdb->prefix . 'rfm_payments',
-            $wpdb->prefix . 'rfm_user_profiles'
+            $wpdb->prefix . 'rfm_user_profiles',
+            $wpdb->prefix . 'rfm_bookings',
+            $wpdb->prefix . 'rfm_availability'
         );
         
         foreach ($tables as $table) {

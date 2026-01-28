@@ -713,4 +713,264 @@
         $('body').css('overflow', ''); // Restore scrolling
     }
 
+    // ============================================
+    // INTERNAL BOOKING CALENDAR (v3.10.0)
+    // ============================================
+
+    var $calendarSection = $('#rfm-booking-calendar');
+    if ($calendarSection.length > 0) {
+        var expertId = $calendarSection.data('expert-id');
+        var sessionDuration = $calendarSection.data('duration') || 60;
+        var currentMonth = new Date();
+        var selectedDate = null;
+        var selectedTime = null;
+        var availableDays = [];
+        var ajaxUrl = typeof rfmData !== 'undefined' ? rfmData.ajaxurl : '';
+
+        // Determine AJAX URL fallback
+        if (!ajaxUrl) {
+            var scriptTag = $('script[src*="public.js"]');
+            if (scriptTag.length) {
+                var src = scriptTag.attr('src');
+                ajaxUrl = src.replace('assets/js/public.js', 'ajax-handler.php').split('?')[0];
+            }
+        }
+
+        // Load available days of week for this expert
+        function loadAvailableDays() {
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: {
+                    action: 'rfm_get_available_days',
+                    expert_id: expertId
+                },
+                success: function(response) {
+                    if (response.success && response.data.days) {
+                        availableDays = response.data.days;
+                        renderCalendar();
+                    }
+                }
+            });
+        }
+
+        // Render calendar for current month
+        function renderCalendar() {
+            var year = currentMonth.getFullYear();
+            var month = currentMonth.getMonth();
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Month label
+            var monthNames = ['Januar', 'Februar', 'Marts', 'April', 'Maj', 'Juni',
+                             'Juli', 'August', 'September', 'Oktober', 'November', 'December'];
+            $('.rfm-calendar-month-label').text(monthNames[month] + ' ' + year);
+
+            // First day of month (0=Sun, adjust for Monday start)
+            var firstDay = new Date(year, month, 1).getDay();
+            firstDay = firstDay === 0 ? 6 : firstDay - 1; // Convert to Monday=0
+
+            var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            var html = '';
+
+            // Empty cells for days before start
+            for (var i = 0; i < firstDay; i++) {
+                html += '<div class="rfm-calendar-day empty"></div>';
+            }
+
+            // Days of month
+            for (var d = 1; d <= daysInMonth; d++) {
+                var date = new Date(year, month, d);
+                var dateStr = formatDate(date);
+                var dayOfWeek = date.getDay() === 0 ? 7 : date.getDay(); // ISO day (1=Mon, 7=Sun)
+                var isAvailable = availableDays.indexOf(dayOfWeek) !== -1;
+                var isPast = date < today;
+                var isToday = date.getTime() === today.getTime();
+                var isSelected = selectedDate === dateStr;
+
+                var classes = ['rfm-calendar-day'];
+                if (isPast) classes.push('disabled');
+                else if (isAvailable) classes.push('available');
+                else classes.push('disabled');
+                if (isToday) classes.push('today');
+                if (isSelected) classes.push('selected');
+
+                html += '<div class="' + classes.join(' ') + '" data-date="' + dateStr + '">' + d + '</div>';
+            }
+
+            $('.rfm-calendar-days').html(html);
+        }
+
+        // Format date to Y-m-d
+        function formatDate(date) {
+            var y = date.getFullYear();
+            var m = ('0' + (date.getMonth() + 1)).slice(-2);
+            var d = ('0' + date.getDate()).slice(-2);
+            return y + '-' + m + '-' + d;
+        }
+
+        // Navigate months
+        $(document).on('click', '.rfm-calendar-prev', function() {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            renderCalendar();
+        });
+
+        $(document).on('click', '.rfm-calendar-next', function() {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            renderCalendar();
+        });
+
+        // Click on a day
+        $(document).on('click', '.rfm-calendar-day.available', function() {
+            var date = $(this).data('date');
+            selectedDate = date;
+            selectedTime = null;
+
+            // Update UI
+            $('.rfm-calendar-day').removeClass('selected');
+            $(this).addClass('selected');
+
+            // Load time slots
+            loadTimeSlots(date);
+        });
+
+        // Load time slots for selected date
+        function loadTimeSlots(date) {
+            var $slotsContainer = $('.rfm-time-slots');
+            var $grid = $('.rfm-time-slots-grid');
+
+            $slotsContainer.show();
+            $('.rfm-booking-form-container').hide();
+
+            // Format date for display
+            var dateObj = new Date(date + 'T00:00:00');
+            var dayNames = ['Søndag', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag'];
+            var monthNames = ['januar', 'februar', 'marts', 'april', 'maj', 'juni',
+                             'juli', 'august', 'september', 'oktober', 'november', 'december'];
+            var displayDate = dayNames[dateObj.getDay()] + ' d. ' + dateObj.getDate() + '. ' + monthNames[dateObj.getMonth()];
+            $('.rfm-time-slots-date').text(displayDate);
+
+            $grid.html('<div class="rfm-time-slots-loading"><i class="dashicons dashicons-update rfm-spin"></i> Indlæser ledige tider...</div>');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'GET',
+                data: {
+                    action: 'rfm_get_available_slots',
+                    expert_id: expertId,
+                    date: date
+                },
+                success: function(response) {
+                    if (response.success && response.data.slots && response.data.slots.length > 0) {
+                        var html = '';
+                        response.data.slots.forEach(function(slot) {
+                            html += '<div class="rfm-time-slot" data-time="' + slot + '">' + slot + '</div>';
+                        });
+                        $grid.html(html);
+                    } else {
+                        $grid.html('<div class="rfm-no-slots">Ingen ledige tider denne dag.</div>');
+                    }
+                },
+                error: function() {
+                    $grid.html('<div class="rfm-no-slots">Kunne ikke indlæse tider. Prøv igen.</div>');
+                }
+            });
+        }
+
+        // Click on a time slot
+        $(document).on('click', '.rfm-time-slot:not(.booked)', function() {
+            selectedTime = $(this).data('time');
+
+            $('.rfm-time-slot').removeClass('selected');
+            $(this).addClass('selected');
+
+            // Show booking form
+            showBookingForm();
+        });
+
+        // Show the booking confirmation form
+        function showBookingForm() {
+            if (!selectedDate || !selectedTime) return;
+
+            var dateObj = new Date(selectedDate + 'T00:00:00');
+            var dayNames = ['Søndag', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag'];
+            var monthNames = ['januar', 'februar', 'marts', 'april', 'maj', 'juni',
+                             'juli', 'august', 'september', 'oktober', 'november', 'december'];
+
+            var displayDate = dayNames[dateObj.getDay()] + ' d. ' + dateObj.getDate() + '. ' + monthNames[dateObj.getMonth()] + ' ' + dateObj.getFullYear();
+
+            $('.rfm-booking-selected-date').text(displayDate);
+            $('.rfm-booking-selected-time').text(selectedTime);
+            $('input[name="booking_date"]').val(selectedDate);
+            $('input[name="booking_time"]').val(selectedTime);
+
+            $('.rfm-booking-form-container').slideDown(200);
+
+            // Scroll to form
+            $('html, body').animate({
+                scrollTop: $('.rfm-booking-form-container').offset().top - 100
+            }, 300);
+        }
+
+        // Back button
+        $(document).on('click', '.rfm-booking-back', function() {
+            $('.rfm-booking-form-container').slideUp(200);
+            selectedTime = null;
+            $('.rfm-time-slot').removeClass('selected');
+        });
+
+        // Submit booking
+        $(document).on('submit', '#rfm-booking-submit-form', function(e) {
+            e.preventDefault();
+
+            var $form = $(this);
+            var $btn = $form.find('.rfm-btn-booking-confirm');
+            var $msg = $('#rfm-booking-form-message');
+
+            $btn.prop('disabled', true).html('<i class="dashicons dashicons-update rfm-spin"></i> Sender...');
+            $msg.hide();
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_create_booking',
+                    nonce: typeof rfmData !== 'undefined' ? rfmData.bookingNonce : '',
+                    expert_id: expertId,
+                    booking_date: selectedDate,
+                    booking_time: selectedTime,
+                    duration: sessionDuration,
+                    note: $form.find('textarea[name="note"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $msg.html('<div class="rfm-alert rfm-alert-success">' + response.data.message + '</div>').show();
+                        // Reset form
+                        $form.find('textarea').val('');
+                        selectedTime = null;
+                        selectedDate = null;
+                        // Refresh time slots
+                        setTimeout(function() {
+                            $('.rfm-booking-form-container').slideUp();
+                            $('.rfm-time-slots').hide();
+                            $('.rfm-calendar-day').removeClass('selected');
+                        }, 3000);
+                    } else {
+                        $msg.html('<div class="rfm-alert rfm-alert-error">' + (response.data.message || 'Der opstod en fejl.') + '</div>').show();
+                    }
+                },
+                error: function() {
+                    $msg.html('<div class="rfm-alert rfm-alert-error">Netværksfejl. Prøv igen.</div>').show();
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<i class="dashicons dashicons-calendar-alt"></i> Book tid');
+                }
+            });
+        });
+
+        // Initialize calendar
+        loadAvailableDays();
+    }
+
 })(jQuery);
