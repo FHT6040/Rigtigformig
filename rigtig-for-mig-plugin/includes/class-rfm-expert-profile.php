@@ -54,6 +54,7 @@ class RFM_Expert_Profile {
         $profile_content .= $this->get_profile_details($expert_id);
         $profile_content .= $this->get_ratings_section($expert_id);
         $profile_content .= $this->get_message_modal($expert_id);
+        $profile_content .= RFM_Booking_Link::get_instance()->render_booking_modal($expert_id);
 
         return $profile_content;
     }

@@ -657,4 +657,60 @@
         });
     });
 
+    // ========================================
+    // BOOKING MODAL (v3.9.8)
+    // Opens external booking in iframe/popup
+    // ========================================
+
+    // Open booking modal
+    $(document).on('click', '#rfm-open-booking-modal', function(e) {
+        e.preventDefault();
+
+        var $modal = $('#rfm-booking-modal');
+        var $iframe = $('#rfm-booking-iframe');
+        var bookingUrl = $(this).data('booking-url');
+
+        if ($modal.length > 0 && bookingUrl) {
+            // Show modal
+            $modal.show();
+            $('body').css('overflow', 'hidden'); // Prevent background scrolling
+
+            // Load iframe content (lazy load)
+            if (!$iframe.attr('src') || $iframe.attr('src') === '') {
+                $iframe.attr('src', bookingUrl);
+
+                // Hide loader when iframe loads
+                $iframe.on('load', function() {
+                    $(this).siblings('.rfm-booking-iframe-loader').fadeOut(300);
+                });
+            }
+        }
+    });
+
+    // Close booking modal - close button
+    $(document).on('click', '.rfm-booking-modal-close', function(e) {
+        e.preventDefault();
+        closeBookingModal();
+    });
+
+    // Close booking modal - click on overlay
+    $(document).on('click', '#rfm-booking-modal', function(e) {
+        if (e.target === this) {
+            closeBookingModal();
+        }
+    });
+
+    // Close booking modal - ESC key
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && $('#rfm-booking-modal').is(':visible')) {
+            closeBookingModal();
+        }
+    });
+
+    // Helper function to close booking modal
+    function closeBookingModal() {
+        $('#rfm-booking-modal').fadeOut(200);
+        $('body').css('overflow', ''); // Restore scrolling
+    }
+
 })(jQuery);

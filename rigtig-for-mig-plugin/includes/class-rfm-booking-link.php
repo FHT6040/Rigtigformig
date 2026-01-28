@@ -75,6 +75,7 @@ class RFM_Booking_Link {
 
     /**
      * Render booking button HTML for expert profile
+     * Opens in a modal/popup instead of leaving the site
      *
      * @param int $expert_id Expert post ID
      * @return string HTML for booking button or empty string
@@ -86,17 +87,78 @@ class RFM_Booking_Link {
 
         $url = $this->get_booking_url($expert_id);
         $text = $this->get_booking_button_text($expert_id);
+        $expert_name = get_the_title($expert_id);
 
         ob_start();
         ?>
-        <a href="<?php echo esc_url($url); ?>"
-           target="_blank"
-           rel="noopener noreferrer"
-           class="rfm-btn rfm-btn-booking"
-           title="<?php esc_attr_e('Åbner i nyt vindue', 'rigtig-for-mig'); ?>">
+        <button type="button"
+                class="rfm-btn rfm-btn-booking"
+                id="rfm-open-booking-modal"
+                data-booking-url="<?php echo esc_url($url); ?>"
+                data-expert-name="<?php echo esc_attr($expert_name); ?>"
+                title="<?php esc_attr_e('Book tid', 'rigtig-for-mig'); ?>">
             <i class="dashicons dashicons-calendar-alt"></i>
             <?php echo esc_html($text); ?>
-        </a>
+        </button>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Render booking modal HTML
+     * Contains an iframe that loads the external booking system
+     *
+     * @param int $expert_id Expert post ID
+     * @return string HTML for booking modal
+     */
+    public function render_booking_modal($expert_id) {
+        if (!$this->is_booking_enabled($expert_id)) {
+            return '';
+        }
+
+        $url = $this->get_booking_url($expert_id);
+        $expert_name = get_the_title($expert_id);
+
+        ob_start();
+        ?>
+        <!-- Booking Modal -->
+        <div id="rfm-booking-modal" class="rfm-modal rfm-booking-modal" style="display: none;">
+            <div class="rfm-booking-modal-content">
+                <div class="rfm-booking-modal-header">
+                    <h3>
+                        <i class="dashicons dashicons-calendar-alt"></i>
+                        <?php printf(__('Book tid hos %s', 'rigtig-for-mig'), esc_html($expert_name)); ?>
+                    </h3>
+                    <button type="button" class="rfm-booking-modal-close" aria-label="<?php esc_attr_e('Luk', 'rigtig-for-mig'); ?>">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="rfm-booking-modal-body">
+                    <div class="rfm-booking-iframe-loader">
+                        <i class="dashicons dashicons-update rfm-spin"></i>
+                        <p><?php _e('Indlæser booking...', 'rigtig-for-mig'); ?></p>
+                    </div>
+                    <iframe
+                        id="rfm-booking-iframe"
+                        src=""
+                        data-src="<?php echo esc_url($url); ?>"
+                        frameborder="0"
+                        allowfullscreen
+                        allow="payment; camera; microphone"
+                        title="<?php esc_attr_e('Booking kalender', 'rigtig-for-mig'); ?>">
+                    </iframe>
+                </div>
+                <div class="rfm-booking-modal-footer">
+                    <a href="<?php echo esc_url($url); ?>"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="rfm-booking-external-link">
+                        <i class="dashicons dashicons-external"></i>
+                        <?php _e('Åbn i nyt vindue', 'rigtig-for-mig'); ?>
+                    </a>
+                </div>
+            </div>
+        </div>
         <?php
         return ob_get_clean();
     }
