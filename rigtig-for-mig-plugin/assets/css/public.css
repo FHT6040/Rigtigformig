@@ -3983,6 +3983,56 @@ body.rfm-expert-user.admin-bar {
     margin-top: 20px;
 }
 
+/* Calendar Action Links on Booking Cards (v3.10.1) */
+.rfm-calendar-actions {
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.rfm-calendar-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-right: 4px;
+}
+
+.rfm-btn-calendar {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 5px;
+    text-decoration: none !important;
+    color: #fff !important;
+    transition: all 0.2s;
+}
+
+.rfm-btn-calendar:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+.rfm-btn-calendar .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+}
+
+.rfm-btn-google {
+    background: #4285F4;
+}
+
+.rfm-btn-outlook {
+    background: #0078D4;
+}
+
+.rfm-btn-ics {
+    background: #555;
+}
+
 /* ============================================
    RESPONSIVE - Booking Calendar
    ============================================ */

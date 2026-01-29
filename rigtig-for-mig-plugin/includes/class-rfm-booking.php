@@ -678,10 +678,6 @@ class RFM_Booking {
                             </div>
                             <div class="rfm-booking-card-body">
                                 <p><strong><?php _e('Bruger:', 'rigtig-for-mig'); ?></strong> <?php echo esc_html($booking->user_name); ?></p>
-                                <p><strong><?php _e('E-mail:', 'rigtig-for-mig'); ?></strong> <a href="mailto:<?php echo esc_attr($booking->user_email); ?>"><?php echo esc_html($booking->user_email); ?></a></p>
-                                <?php if (!empty($booking->user_phone)): ?>
-                                <p><strong><?php _e('Telefon:', 'rigtig-for-mig'); ?></strong> <a href="tel:<?php echo esc_attr($booking->user_phone); ?>"><?php echo esc_html($booking->user_phone); ?></a></p>
-                                <?php endif; ?>
                                 <?php if ($booking->note): ?>
                                 <p><strong><?php _e('Besked:', 'rigtig-for-mig'); ?></strong> <?php echo esc_html($booking->note); ?></p>
                                 <?php endif; ?>
@@ -705,7 +701,9 @@ class RFM_Booking {
                 <div class="rfm-form-section rfm-booking-list-section">
                     <h3><?php _e('Kommende bookinger', 'rigtig-for-mig'); ?></h3>
                     <div class="rfm-booking-list">
-                        <?php foreach ($upcoming_bookings as $booking): ?>
+                        <?php foreach ($upcoming_bookings as $booking):
+                            $cal_links = $this->get_calendar_links($booking);
+                        ?>
                         <div class="rfm-booking-card rfm-booking-confirmed">
                             <div class="rfm-booking-card-header">
                                 <span class="rfm-booking-date">
@@ -721,6 +719,18 @@ class RFM_Booking {
                                 <?php if (!empty($booking->user_phone)): ?>
                                 <p><strong><?php _e('Telefon:', 'rigtig-for-mig'); ?></strong> <a href="tel:<?php echo esc_attr($booking->user_phone); ?>"><?php echo esc_html($booking->user_phone); ?></a></p>
                                 <?php endif; ?>
+                            </div>
+                            <div class="rfm-booking-card-actions rfm-calendar-actions">
+                                <span class="rfm-calendar-label"><?php _e('Føj til kalender:', 'rigtig-for-mig'); ?></span>
+                                <a href="<?php echo esc_url($cal_links['google']); ?>" target="_blank" class="rfm-btn rfm-btn-small rfm-btn-calendar rfm-btn-google" title="Google Kalender">
+                                    <i class="dashicons dashicons-google"></i> Google
+                                </a>
+                                <a href="<?php echo esc_url($cal_links['outlook']); ?>" target="_blank" class="rfm-btn rfm-btn-small rfm-btn-calendar rfm-btn-outlook" title="Outlook">
+                                    <i class="dashicons dashicons-email"></i> Outlook
+                                </a>
+                                <a href="<?php echo esc_attr($cal_links['ics']); ?>" download="booking-<?php echo esc_attr($booking->id); ?>.ics" class="rfm-btn rfm-btn-small rfm-btn-calendar rfm-btn-ics" title="Apple Kalender / .ics">
+                                    <i class="dashicons dashicons-calendar-alt"></i> .ics
+                                </a>
                             </div>
                         </div>
                         <?php endforeach; ?>
