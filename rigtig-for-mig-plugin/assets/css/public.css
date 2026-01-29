@@ -4080,8 +4080,7 @@ body.rfm-expert-user.admin-bar {
 }
 
 .rfm-sidebar-row-multi {
-    flex-direction: column;
-    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .rfm-sidebar-label {
@@ -4112,6 +4111,8 @@ body.rfm-expert-user.admin-bar {
     flex-direction: column;
     align-items: flex-end;
     gap: 2px;
+    flex: 1;
+    text-align: right;
 }
 
 .rfm-sidebar-row-multi .rfm-sidebar-value {

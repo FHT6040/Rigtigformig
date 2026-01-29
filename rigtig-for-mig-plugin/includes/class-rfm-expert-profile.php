@@ -696,38 +696,7 @@ class RFM_Expert_Profile {
                 </div>
             <?php endif; ?>
             
-            <?php
-            // Get languages
-            $languages = get_post_meta($expert_id, '_rfm_languages', true);
-            if (!empty($languages) && is_array($languages) && count($languages) > 0):
-                // Get language field labels from flexible fields system
-                $flexible_fields = RFM_Flexible_Fields_System::get_instance();
-                $all_fields = $flexible_fields->get_fields();
-                $language_fields = array();
-                if (isset($all_fields['sprog']) && isset($all_fields['sprog']['fields'])) {
-                    $language_fields = $all_fields['sprog']['fields'];
-                }
-
-                $language_names = array();
-                foreach ($languages as $lang) {
-                    $lang_key = strtolower($lang);
-                    // Use label from flexible fields system if available, otherwise use capitalized key
-                    if (isset($language_fields[$lang_key]['label'])) {
-                        $language_names[] = $language_fields[$lang_key]['label'];
-                    } else {
-                        $language_names[] = ucfirst($lang);
-                    }
-                }
-            ?>
-                <div class="rfm-detail-section">
-                    <h3><?php _e('Sprog', 'rigtig-for-mig'); ?></h3>
-                    <div class="rfm-languages-list">
-                        <?php foreach ($language_names as $language_name): ?>
-                            <span class="rfm-language-tag"><?php echo esc_html($language_name); ?></span>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
+            <?php // Sprog section moved to sidebar (v3.11.0) ?>
         </div>
         <?php
         return ob_get_clean();
