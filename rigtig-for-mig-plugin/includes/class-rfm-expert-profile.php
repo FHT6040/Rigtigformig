@@ -50,8 +50,22 @@ class RFM_Expert_Profile {
         
         // Add profile sections before content
         $profile_content = $this->get_profile_header($expert_id);
-        $profile_content .= $content;
-        $profile_content .= $this->get_profile_details($expert_id);
+
+        // Wrap content + sidebar in a layout container
+        $sidebar_html = $this->get_profile_sidebar($expert_id);
+        if (!empty($sidebar_html)) {
+            $profile_content .= '<div class="rfm-profile-layout">';
+            $profile_content .= '<div class="rfm-profile-main-content">';
+            $profile_content .= $content;
+            $profile_content .= $this->get_profile_details($expert_id);
+            $profile_content .= '</div>';
+            $profile_content .= $sidebar_html;
+            $profile_content .= '</div>';
+        } else {
+            $profile_content .= $content;
+            $profile_content .= $this->get_profile_details($expert_id);
+        }
+
         $profile_content .= $this->get_ratings_section($expert_id);
         $profile_content .= $this->get_message_modal($expert_id);
 
@@ -259,6 +273,191 @@ class RFM_Expert_Profile {
         return ob_get_clean();
     }
     
+
+    /**
+     * Get profile sidebar / info-box HTML (v3.11.0)
+     */
+    private function get_profile_sidebar($expert_id) {
+        $medlem_af    = get_post_meta($expert_id, '_rfm_medlem_af', true);
+        $ventetid     = get_post_meta($expert_id, '_rfm_ventetid', true);
+        $sessionstyper = get_post_meta($expert_id, '_rfm_sessionstyper', true);
+        $tilskud      = get_post_meta($expert_id, '_rfm_tilskud', true);
+        $tilskud_tekst = get_post_meta($expert_id, '_rfm_tilskud_tekst', true);
+        $languages    = get_post_meta($expert_id, '_rfm_languages', true);
+
+        // Get "Medlem siden" from post publish date
+        $post_date = get_the_date('F Y', $expert_id);
+
+        // Get gender from user meta if available
+        $post_author = get_post_field('post_author', $expert_id);
+        $gender = get_user_meta($post_author, '_rfm_gender', true);
+
+        if (!is_array($sessionstyper)) $sessionstyper = array();
+        if (!is_array($tilskud)) $tilskud = array();
+        if (!is_array($languages)) $languages = array();
+
+        // Check if there is any data to show
+        $has_data = !empty($medlem_af) || !empty($ventetid) || !empty($sessionstyper)
+                    || !empty($tilskud) || !empty($languages) || !empty($post_date);
+
+        if (!$has_data) {
+            return '';
+        }
+
+        // Ventetid label map
+        $ventetid_labels = array(
+            'ingen'            => __('Ingen ventetid', 'rigtig-for-mig'),
+            'under_1_uge'      => __('Under 1 uge', 'rigtig-for-mig'),
+            '1_2_uger'         => __('1-2 uger', 'rigtig-for-mig'),
+            '2_4_uger'         => __('2-4 uger', 'rigtig-for-mig'),
+            '1_2_maaneder'     => __('1-2 måneder', 'rigtig-for-mig'),
+            'over_2_maaneder'  => __('Over 2 måneder', 'rigtig-for-mig'),
+        );
+
+        // Sessionstype label map
+        $sessionstype_labels = array(
+            'individuel'          => __('Individuel samtale', 'rigtig-for-mig'),
+            'online_terapi'       => __('Online terapi', 'rigtig-for-mig'),
+            'online_coaching'     => __('Online coaching', 'rigtig-for-mig'),
+            'parterapi'           => __('Parterapi', 'rigtig-for-mig'),
+            'familieterapi'       => __('Familieterapi', 'rigtig-for-mig'),
+            'kriseterapi'         => __('Kriseterapi', 'rigtig-for-mig'),
+            'forældrerådgivning'  => __('Forældrerådgivning', 'rigtig-for-mig'),
+            'saarbare_unge'       => __('Sårbare unge', 'rigtig-for-mig'),
+            'gruppeforløb'        => __('Gruppeforløb', 'rigtig-for-mig'),
+            'hjemmebesøg'         => __('Hjemmebesøg', 'rigtig-for-mig'),
+            'telefon'             => __('Telefonsamtale', 'rigtig-for-mig'),
+            'workshop'            => __('Workshop', 'rigtig-for-mig'),
+        );
+
+        // Tilskud label map
+        $tilskud_labels = array(
+            'studierabat'           => __('Studierabat', 'rigtig-for-mig'),
+            'overfoerselsindkomst'  => __('Overførselsindkomst', 'rigtig-for-mig'),
+            'laegehenvisning'       => __('Lægehenvisning', 'rigtig-for-mig'),
+            'forsikring'            => __('Forsikringsdækning', 'rigtig-for-mig'),
+            'seniorrabat'           => __('Seniorrabat', 'rigtig-for-mig'),
+        );
+
+        // Language label map
+        $language_labels = array(
+            'dansk'       => 'Dansk',
+            'engelsk'     => 'English',
+            'svensk'      => 'Svenska',
+            'norsk'       => 'Norsk',
+            'suomi'       => 'Suomi',
+            'faeroyskt'   => 'Føroyskt',
+            'kalaallisut' => 'Kalaallisut',
+            'espanol'     => 'Español',
+            'italiano'    => 'Italiano',
+            'deutsch'     => 'Deutsch',
+            'arabic'      => 'العربية',
+        );
+
+        // Gender label map
+        $gender_labels = array(
+            'kvinde' => __('Kvinde', 'rigtig-for-mig'),
+            'mand'   => __('Mand', 'rigtig-for-mig'),
+            'andet'  => __('Andet', 'rigtig-for-mig'),
+        );
+
+        ob_start();
+        ?>
+        <aside class="rfm-profile-sidebar">
+            <div class="rfm-sidebar-card">
+
+                <?php if (!empty($post_date)): ?>
+                <div class="rfm-sidebar-row">
+                    <span class="rfm-sidebar-label">
+                        <i class="dashicons dashicons-calendar-alt"></i> <?php _e('Medlem siden', 'rigtig-for-mig'); ?>
+                    </span>
+                    <span class="rfm-sidebar-value"><?php echo esc_html(ucfirst($post_date)); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($medlem_af)): ?>
+                <div class="rfm-sidebar-row">
+                    <span class="rfm-sidebar-label">
+                        <i class="dashicons dashicons-awards"></i> <?php _e('Medlem af', 'rigtig-for-mig'); ?>
+                    </span>
+                    <span class="rfm-sidebar-value"><?php echo esc_html($medlem_af); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($ventetid)): ?>
+                <div class="rfm-sidebar-row">
+                    <span class="rfm-sidebar-label">
+                        <i class="dashicons dashicons-clock"></i> <?php _e('Ventetid', 'rigtig-for-mig'); ?>
+                    </span>
+                    <span class="rfm-sidebar-value"><?php echo esc_html($ventetid_labels[$ventetid] ?? $ventetid); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($gender) && isset($gender_labels[$gender])): ?>
+                <div class="rfm-sidebar-row">
+                    <span class="rfm-sidebar-label">
+                        <i class="dashicons dashicons-admin-users"></i> <?php _e('Køn', 'rigtig-for-mig'); ?>
+                    </span>
+                    <span class="rfm-sidebar-value"><?php echo esc_html($gender_labels[$gender]); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($languages)): ?>
+                <div class="rfm-sidebar-row rfm-sidebar-row-multi">
+                    <span class="rfm-sidebar-label">
+                        <i class="dashicons dashicons-translation"></i> <?php _e('Sprog', 'rigtig-for-mig'); ?>
+                    </span>
+                    <span class="rfm-sidebar-values">
+                        <?php foreach ($languages as $lang):
+                            $lang_label = $language_labels[$lang] ?? ucfirst($lang);
+                        ?>
+                            <span class="rfm-sidebar-value"><?php echo esc_html($lang_label); ?></span>
+                        <?php endforeach; ?>
+                    </span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($sessionstyper)): ?>
+                <div class="rfm-sidebar-row rfm-sidebar-row-multi">
+                    <span class="rfm-sidebar-label">
+                        <i class="dashicons dashicons-groups"></i> <?php _e('Sessionstype', 'rigtig-for-mig'); ?>
+                    </span>
+                    <span class="rfm-sidebar-values">
+                        <?php foreach ($sessionstyper as $type):
+                            $type_label = $sessionstype_labels[$type] ?? $type;
+                        ?>
+                            <span class="rfm-sidebar-value"><?php echo esc_html($type_label); ?></span>
+                        <?php endforeach; ?>
+                    </span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($tilskud)): ?>
+                <div class="rfm-sidebar-row rfm-sidebar-row-multi">
+                    <span class="rfm-sidebar-label">
+                        <i class="dashicons dashicons-tag"></i> <?php _e('Tilskud', 'rigtig-for-mig'); ?>
+                    </span>
+                    <span class="rfm-sidebar-values">
+                        <?php foreach ($tilskud as $t):
+                            $t_label = $tilskud_labels[$t] ?? $t;
+                        ?>
+                            <span class="rfm-sidebar-value"><?php echo esc_html($t_label); ?></span>
+                        <?php endforeach; ?>
+                    </span>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($tilskud_tekst)): ?>
+                <div class="rfm-sidebar-row rfm-sidebar-row-note">
+                    <p class="rfm-sidebar-note"><?php echo esc_html($tilskud_tekst); ?></p>
+                </div>
+                <?php endif; ?>
+
+            </div>
+        </aside>
+        <?php
+        return ob_get_clean();
+    }
 
     /**
      * Get profile details HTML

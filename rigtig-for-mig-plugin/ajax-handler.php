@@ -479,6 +479,25 @@ function rfm_direct_save_general_profile() {
         update_post_meta($expert_id, '_rfm_company_name', sanitize_text_field($_POST['company_name'] ?? ''));
     }
 
+    // Update praktisk information (v3.11.0)
+    update_post_meta($expert_id, '_rfm_medlem_af', sanitize_text_field($_POST['medlem_af'] ?? ''));
+    update_post_meta($expert_id, '_rfm_ventetid', sanitize_text_field($_POST['ventetid'] ?? ''));
+
+    if (isset($_POST['sessionstyper'])) {
+        $sessionstyper = array_map('sanitize_text_field', $_POST['sessionstyper']);
+        update_post_meta($expert_id, '_rfm_sessionstyper', $sessionstyper);
+    } else {
+        update_post_meta($expert_id, '_rfm_sessionstyper', array());
+    }
+
+    if (isset($_POST['tilskud'])) {
+        $tilskud = array_map('sanitize_text_field', $_POST['tilskud']);
+        update_post_meta($expert_id, '_rfm_tilskud', $tilskud);
+    } else {
+        update_post_meta($expert_id, '_rfm_tilskud', array());
+    }
+    update_post_meta($expert_id, '_rfm_tilskud_tekst', sanitize_textarea_field($_POST['tilskud_tekst'] ?? ''));
+
     // Update languages
     if (isset($_POST['languages'])) {
         $languages = array_map('sanitize_text_field', $_POST['languages']);
