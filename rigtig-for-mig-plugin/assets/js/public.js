@@ -941,7 +941,8 @@
                     booking_date: selectedDate,
                     booking_time: selectedTime,
                     duration: sessionDuration,
-                    note: $form.find('textarea[name="note"]').val()
+                    note: $form.find('textarea[name="note"]').val(),
+                    user_phone: $form.find('input[name="user_phone"]').val()
                 },
                 success: function(response) {
                     if (response.success) {

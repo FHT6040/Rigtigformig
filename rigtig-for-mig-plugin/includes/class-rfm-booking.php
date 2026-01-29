@@ -36,15 +36,16 @@ class RFM_Booking {
     /**
      * Create a new booking
      *
-     * @param int    $expert_id Expert post ID
-     * @param int    $user_id   User ID
-     * @param string $date      Booking date (Y-m-d)
-     * @param string $time      Booking time (H:i)
-     * @param int    $duration  Duration in minutes
-     * @param string $note      Optional note from user
+     * @param int    $expert_id  Expert post ID
+     * @param int    $user_id    User ID
+     * @param string $date       Booking date (Y-m-d)
+     * @param string $time       Booking time (H:i)
+     * @param int    $duration   Duration in minutes
+     * @param string $note       Optional note from user
+     * @param string $user_phone Optional phone number from user
      * @return int|false Booking ID on success, false on failure
      */
-    public function create_booking($expert_id, $user_id, $date, $time, $duration = 60, $note = '') {
+    public function create_booking($expert_id, $user_id, $date, $time, $duration = 60, $note = '', $user_phone = '') {
         global $wpdb;
 
         // Validate inputs
@@ -83,10 +84,17 @@ class RFM_Booking {
             'duration'     => $duration,
             'status'       => self::STATUS_PENDING,
             'note'         => sanitize_textarea_field($note),
-        ), array('%d', '%d', '%s', '%s', '%d', '%s', '%s'));
+            'user_phone'   => sanitize_text_field($user_phone),
+        ), array('%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s'));
 
         if ($result) {
             $booking_id = $wpdb->insert_id;
+
+            // Also save phone to user profile for future auto-fill
+            if (!empty($user_phone)) {
+                update_user_meta($user_id, '_rfm_phone', sanitize_text_field($user_phone));
+            }
+
             $this->send_booking_notification($booking_id, 'new');
             return $booking_id;
         }
@@ -374,6 +382,25 @@ class RFM_Booking {
             case 'confirmed':
                 // Notify user that booking is confirmed
                 $subject = sprintf(__('[%s] Din booking hos %s er bekræftet!', 'rigtig-for-mig'), $site_name, $expert_name);
+
+                // Generate calendar links
+                $calendar_links = $this->get_calendar_links($booking);
+
+                $calendar_html = sprintf(
+                    '<div style="margin-top: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px; border: 1px solid #d0e3f7;">
+                        <p style="margin: 0 0 10px 0; font-weight: 600; color: #333;">%s</p>
+                        <p style="margin: 0;">
+                            <a href="%s" target="_blank" style="display: inline-block; padding: 8px 16px; background: #4285F4; color: #fff; text-decoration: none; border-radius: 5px; margin-right: 8px; margin-bottom: 5px;">Google Kalender</a>
+                            <a href="%s" target="_blank" style="display: inline-block; padding: 8px 16px; background: #0078D4; color: #fff; text-decoration: none; border-radius: 5px; margin-right: 8px; margin-bottom: 5px;">Outlook</a>
+                            <a href="%s" download="booking.ics" style="display: inline-block; padding: 8px 16px; background: #555; color: #fff; text-decoration: none; border-radius: 5px; margin-bottom: 5px;">Apple Kalender (.ics)</a>
+                        </p>
+                    </div>',
+                    __('Føj til din kalender:', 'rigtig-for-mig'),
+                    esc_url($calendar_links['google']),
+                    esc_url($calendar_links['outlook']),
+                    esc_attr($calendar_links['ics'])
+                );
+
                 $message = sprintf(
                     '<h2 style="color: #4CAF50;">%s</h2>
                     <p>%s</p>
@@ -382,13 +409,15 @@ class RFM_Booking {
                         <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>%s</strong></td><td style="padding: 8px; border: 1px solid #ddd;">%s</td></tr>
                         <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>%s</strong></td><td style="padding: 8px; border: 1px solid #ddd;">%s</td></tr>
                         %s
-                    </table>',
+                    </table>
+                    %s',
                     __('Booking bekræftet!', 'rigtig-for-mig'),
                     sprintf(__('Din booking hos %s er nu bekræftet.', 'rigtig-for-mig'), esc_html($expert_name)),
                     __('Ekspert', 'rigtig-for-mig'), esc_html($expert_name),
                     __('Dato', 'rigtig-for-mig'), $date_formatted,
                     __('Tidspunkt', 'rigtig-for-mig'), $time_formatted,
-                    $booking->expert_note ? '<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>' . __('Besked fra ekspert', 'rigtig-for-mig') . '</strong></td><td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($booking->expert_note) . '</td></tr>' : ''
+                    $booking->expert_note ? '<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>' . __('Besked fra ekspert', 'rigtig-for-mig') . '</strong></td><td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($booking->expert_note) . '</td></tr>' : '',
+                    $calendar_html
                 );
                 wp_mail($user->user_email, $subject, $message, $headers);
                 break;
@@ -487,12 +516,24 @@ class RFM_Booking {
                         <p><strong><?php _e('Varighed:', 'rigtig-for-mig'); ?></strong> <?php echo $duration; ?> <?php _e('minutter', 'rigtig-for-mig'); ?></p>
                     </div>
 
-                    <?php if (is_user_logged_in()): ?>
+                    <?php if (is_user_logged_in()):
+                        $current_user_id = get_current_user_id();
+                        $user_phone = get_user_meta($current_user_id, '_rfm_phone', true);
+                    ?>
                     <form id="rfm-booking-submit-form">
                         <input type="hidden" name="expert_id" value="<?php echo esc_attr($expert_id); ?>" />
                         <input type="hidden" name="booking_date" value="" />
                         <input type="hidden" name="booking_time" value="" />
                         <input type="hidden" name="duration" value="<?php echo esc_attr($duration); ?>" />
+
+                        <div class="rfm-form-group">
+                            <label for="rfm-booking-phone"><?php _e('Telefonnummer', 'rigtig-for-mig'); ?> <span class="required">*</span></label>
+                            <input type="tel" id="rfm-booking-phone" name="user_phone"
+                                   value="<?php echo esc_attr($user_phone); ?>"
+                                   placeholder="<?php esc_attr_e('Dit telefonnummer', 'rigtig-for-mig'); ?>"
+                                   required />
+                            <small class="rfm-field-hint"><?php _e('Så eksperten kan kontakte dig vedr. bookingen.', 'rigtig-for-mig'); ?></small>
+                        </div>
 
                         <div class="rfm-form-group">
                             <label for="rfm-booking-note"><?php _e('Besked til eksperten (valgfrit)', 'rigtig-for-mig'); ?></label>
@@ -637,6 +678,10 @@ class RFM_Booking {
                             </div>
                             <div class="rfm-booking-card-body">
                                 <p><strong><?php _e('Bruger:', 'rigtig-for-mig'); ?></strong> <?php echo esc_html($booking->user_name); ?></p>
+                                <p><strong><?php _e('E-mail:', 'rigtig-for-mig'); ?></strong> <a href="mailto:<?php echo esc_attr($booking->user_email); ?>"><?php echo esc_html($booking->user_email); ?></a></p>
+                                <?php if (!empty($booking->user_phone)): ?>
+                                <p><strong><?php _e('Telefon:', 'rigtig-for-mig'); ?></strong> <a href="tel:<?php echo esc_attr($booking->user_phone); ?>"><?php echo esc_html($booking->user_phone); ?></a></p>
+                                <?php endif; ?>
                                 <?php if ($booking->note): ?>
                                 <p><strong><?php _e('Besked:', 'rigtig-for-mig'); ?></strong> <?php echo esc_html($booking->note); ?></p>
                                 <?php endif; ?>
@@ -671,7 +716,11 @@ class RFM_Booking {
                                 <span class="rfm-booking-status rfm-status-confirmed"><?php _e('Bekræftet', 'rigtig-for-mig'); ?></span>
                             </div>
                             <div class="rfm-booking-card-body">
-                                <p><strong><?php _e('Bruger:', 'rigtig-for-mig'); ?></strong> <?php echo esc_html($booking->user_name); ?> (<?php echo esc_html($booking->user_email); ?>)</p>
+                                <p><strong><?php _e('Bruger:', 'rigtig-for-mig'); ?></strong> <?php echo esc_html($booking->user_name); ?></p>
+                                <p><strong><?php _e('E-mail:', 'rigtig-for-mig'); ?></strong> <a href="mailto:<?php echo esc_attr($booking->user_email); ?>"><?php echo esc_html($booking->user_email); ?></a></p>
+                                <?php if (!empty($booking->user_phone)): ?>
+                                <p><strong><?php _e('Telefon:', 'rigtig-for-mig'); ?></strong> <a href="tel:<?php echo esc_attr($booking->user_phone); ?>"><?php echo esc_html($booking->user_phone); ?></a></p>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -685,6 +734,38 @@ class RFM_Booking {
                         <i class="dashicons dashicons-calendar-alt" style="font-size: 32px; opacity: 0.3; display: block; margin-bottom: 10px;"></i>
                         <?php _e('Du har ingen bookinger endnu.', 'rigtig-for-mig'); ?>
                     </p>
+                </div>
+                <?php endif; ?>
+
+                <!-- Past Bookings -->
+                <?php if (!empty($past_bookings)): ?>
+                <div class="rfm-form-section rfm-booking-list-section">
+                    <h3><?php _e('Tidligere bookinger', 'rigtig-for-mig'); ?></h3>
+                    <div class="rfm-booking-list">
+                        <?php foreach ($past_bookings as $booking):
+                            $status_label = $this->get_status_label($booking->status);
+                            $status_class = 'rfm-status-' . $booking->status;
+                        ?>
+                        <div class="rfm-booking-card rfm-booking-<?php echo esc_attr($booking->status); ?>" data-booking-id="<?php echo esc_attr($booking->id); ?>">
+                            <div class="rfm-booking-card-header">
+                                <span class="rfm-booking-date">
+                                    <?php echo date_i18n('d. M Y', strtotime($booking->booking_date)); ?>
+                                    <?php _e('kl.', 'rigtig-for-mig'); ?>
+                                    <?php echo date_i18n('H:i', strtotime($booking->booking_time)); ?>
+                                </span>
+                                <span class="rfm-booking-status <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></span>
+                            </div>
+                            <div class="rfm-booking-card-body">
+                                <p><strong><?php _e('Bruger:', 'rigtig-for-mig'); ?></strong> <?php echo esc_html($booking->user_name); ?></p>
+                            </div>
+                            <div class="rfm-booking-card-actions">
+                                <button type="button" class="rfm-btn rfm-btn-small rfm-btn-danger rfm-btn-delete-booking" data-id="<?php echo esc_attr($booking->id); ?>" data-role="expert">
+                                    <i class="dashicons dashicons-trash"></i> <?php _e('Slet', 'rigtig-for-mig'); ?>
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
@@ -742,6 +823,12 @@ class RFM_Booking {
                             <i class="dashicons dashicons-no"></i> <?php _e('Annuller', 'rigtig-for-mig'); ?>
                         </button>
                     </div>
+                    <?php elseif (!$is_upcoming || $booking->status === 'cancelled'): ?>
+                    <div class="rfm-booking-card-actions">
+                        <button type="button" class="rfm-btn rfm-btn-small rfm-btn-danger rfm-btn-delete-booking" data-id="<?php echo esc_attr($booking->id); ?>" data-role="user">
+                            <i class="dashicons dashicons-trash"></i> <?php _e('Slet', 'rigtig-for-mig'); ?>
+                        </button>
+                    </div>
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
@@ -750,6 +837,132 @@ class RFM_Booking {
         </div>
         <?php
         return ob_get_clean();
+    }
+
+    /**
+     * Delete a booking (only past or cancelled bookings)
+     *
+     * @param int    $booking_id Booking ID
+     * @param int    $requester_id User ID of the person deleting
+     * @param string $role 'expert' or 'user'
+     * @return bool Success
+     */
+    public function delete_booking($booking_id, $requester_id, $role = 'user') {
+        global $wpdb;
+        $table = $wpdb->prefix . 'rfm_bookings';
+
+        $booking = $this->get_booking($booking_id);
+        if (!$booking) {
+            return false;
+        }
+
+        // Verify ownership
+        if ($role === 'expert') {
+            $post = get_post($booking->expert_id);
+            if (!$post || $post->post_author != $requester_id) {
+                return false;
+            }
+        } else {
+            if ($booking->user_id != $requester_id) {
+                return false;
+            }
+        }
+
+        // Only allow deletion of past or cancelled bookings
+        $today = current_time('Y-m-d');
+        $is_past = $booking->booking_date < $today;
+        $is_cancelled = $booking->status === self::STATUS_CANCELLED;
+
+        if (!$is_past && !$is_cancelled) {
+            return false;
+        }
+
+        $result = $wpdb->delete($table, array('id' => $booking_id), array('%d'));
+        return $result !== false;
+    }
+
+    /**
+     * Generate "Add to Calendar" links for a booking
+     *
+     * @param object $booking Booking object
+     * @return array Array with 'google', 'outlook', 'ics' URLs/content
+     */
+    public function get_calendar_links($booking) {
+        $expert_name = get_the_title($booking->expert_id);
+        $user = get_user_by('ID', $booking->user_id);
+
+        $title = sprintf('Booking: %s', $expert_name);
+        $description = sprintf(
+            "Booking hos %s\nVarighed: %d minutter",
+            $expert_name,
+            $booking->duration
+        );
+        if (!empty($booking->note)) {
+            $description .= "\nNote: " . $booking->note;
+        }
+
+        // Build start and end datetimes
+        $start_datetime = $booking->booking_date . ' ' . $booking->booking_time;
+        $end_timestamp = strtotime($start_datetime) + ($booking->duration * 60);
+
+        // Google Calendar format: YYYYMMDDTHHmmSSZ (UTC)
+        $google_start = gmdate('Ymd\THis\Z', strtotime($start_datetime));
+        $google_end = gmdate('Ymd\THis\Z', $end_timestamp);
+
+        $google_url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+            . '&text=' . rawurlencode($title)
+            . '&dates=' . $google_start . '/' . $google_end
+            . '&details=' . rawurlencode($description);
+
+        // Outlook Web format
+        $outlook_start = gmdate('Y-m-d\TH:i:s\Z', strtotime($start_datetime));
+        $outlook_end = gmdate('Y-m-d\TH:i:s\Z', $end_timestamp);
+
+        $outlook_url = 'https://outlook.live.com/calendar/0/deeplink/compose?subject='
+            . rawurlencode($title)
+            . '&startdt=' . rawurlencode($outlook_start)
+            . '&enddt=' . rawurlencode($outlook_end)
+            . '&body=' . rawurlencode($description);
+
+        // ICS content
+        $ics_start = gmdate('Ymd\THis\Z', strtotime($start_datetime));
+        $ics_end = gmdate('Ymd\THis\Z', $end_timestamp);
+        $ics_now = gmdate('Ymd\THis\Z');
+        $uid = 'rfm-booking-' . $booking->id . '@' . parse_url(home_url(), PHP_URL_HOST);
+
+        $ics_content = "BEGIN:VCALENDAR\r\n"
+            . "VERSION:2.0\r\n"
+            . "PRODID:-//Rigtig for mig//Booking//DA\r\n"
+            . "BEGIN:VEVENT\r\n"
+            . "UID:" . $uid . "\r\n"
+            . "DTSTAMP:" . $ics_now . "\r\n"
+            . "DTSTART:" . $ics_start . "\r\n"
+            . "DTEND:" . $ics_end . "\r\n"
+            . "SUMMARY:" . $this->ics_escape($title) . "\r\n"
+            . "DESCRIPTION:" . $this->ics_escape($description) . "\r\n"
+            . "END:VEVENT\r\n"
+            . "END:VCALENDAR";
+
+        // Create a data URI for the .ics file
+        $ics_data_uri = 'data:text/calendar;charset=utf-8,' . rawurlencode($ics_content);
+
+        return array(
+            'google'  => $google_url,
+            'outlook' => $outlook_url,
+            'ics'     => $ics_data_uri,
+        );
+    }
+
+    /**
+     * Escape text for ICS format
+     *
+     * @param string $text Text to escape
+     * @return string Escaped text
+     */
+    private function ics_escape($text) {
+        $text = str_replace(array("\r\n", "\n", "\r"), "\\n", $text);
+        $text = str_replace(array(",", ";", "\\"), array("\\,", "\\;", "\\\\"), $text);
+        return $text;
     }
 
     /**

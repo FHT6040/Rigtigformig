@@ -566,6 +566,44 @@
     });
 
     // ========================================
+    // USER BOOKING DELETE (v3.10.1)
+    // ========================================
+    $(document).on('click', '.rfm-btn-delete-booking[data-role="user"]', function() {
+        if (!confirm('Er du sikker på du vil slette denne booking permanent?')) return;
+
+        var bookingId = $(this).data('id');
+        var $card = $(this).closest('.rfm-booking-card');
+        var $btn = $(this);
+        var ajaxUrl = (typeof rfmUserDashboard !== 'undefined') ? rfmUserDashboard.ajaxurl : '';
+        var nonce = (typeof rfmUserDashboard !== 'undefined') ? rfmUserDashboard.nonce : '';
+
+        $btn.prop('disabled', true).html('<i class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></i>');
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'rfm_delete_booking',
+                nonce: nonce,
+                booking_id: bookingId,
+                role: 'user'
+            },
+            success: function(response) {
+                if (response.success) {
+                    $card.fadeOut(300, function() { $(this).remove(); });
+                } else {
+                    alert(response.data.message || 'Fejl');
+                    $btn.prop('disabled', false).html('<i class="dashicons dashicons-trash"></i> Slet');
+                }
+            },
+            error: function() {
+                alert('Netværksfejl. Prøv igen.');
+                $btn.prop('disabled', false).html('<i class="dashicons dashicons-trash"></i> Slet');
+            }
+        });
+    });
+
+    // ========================================
     // USER BOOKING CANCEL (v3.10.0)
     // ========================================
     $(document).on('click', '.rfm-btn-user-cancel-booking', function() {

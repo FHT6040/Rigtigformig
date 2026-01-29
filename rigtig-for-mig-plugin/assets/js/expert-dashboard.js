@@ -967,6 +967,35 @@
             });
         });
 
+        // Delete past booking (expert)
+        $(document).on('click', '.rfm-btn-delete-booking[data-role="expert"]', function() {
+            if (!confirm('Er du sikker på du vil slette denne booking permanent?')) return;
+
+            var bookingId = $(this).data('id');
+            var $card = $(this).closest('.rfm-booking-card');
+            var nonce = $('input[name="rfm_tabbed_nonce"]').val();
+
+            $(this).prop('disabled', true).html('<i class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></i>');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'rfm_delete_booking',
+                    nonce: nonce,
+                    booking_id: bookingId,
+                    role: 'expert'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $card.fadeOut(300, function() { $(this).remove(); });
+                    } else {
+                        alert(response.data.message || 'Fejl');
+                    }
+                }
+            });
+        });
+
         // Cancel/reject booking
         $(document).on('click', '.rfm-btn-cancel-booking', function() {
             if (!confirm('Er du sikker på du vil afvise denne booking?')) return;

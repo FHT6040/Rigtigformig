@@ -173,6 +173,7 @@ class RFM_Database {
             status varchar(20) NOT NULL DEFAULT 'pending',
             note text,
             expert_note text,
+            user_phone varchar(30) DEFAULT '',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),

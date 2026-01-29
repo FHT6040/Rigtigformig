@@ -192,6 +192,10 @@ switch ($action) {
         rfm_direct_get_available_days();
         break;
 
+    case 'rfm_delete_booking':
+        rfm_direct_delete_booking();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -1845,9 +1849,15 @@ function rfm_direct_create_booking() {
     $time = sanitize_text_field($_POST['booking_time'] ?? '');
     $duration = intval($_POST['duration'] ?? 60);
     $note = sanitize_textarea_field($_POST['note'] ?? '');
+    $user_phone = sanitize_text_field($_POST['user_phone'] ?? '');
 
     if (!$expert_id || !$date || !$time) {
         wp_send_json_error(array('message' => 'Manglende booking-data.'), 400);
+        exit;
+    }
+
+    if (empty($user_phone)) {
+        wp_send_json_error(array('message' => 'Telefonnummer er påkrævet.'), 400);
         exit;
     }
 
@@ -1859,7 +1869,7 @@ function rfm_direct_create_booking() {
     }
 
     $booking_id = RFM_Booking::get_instance()->create_booking(
-        $expert_id, $user_id, $date, $time, $duration, $note
+        $expert_id, $user_id, $date, $time, $duration, $note, $user_phone
     );
 
     if ($booking_id) {
@@ -1974,6 +1984,54 @@ function rfm_direct_cancel_user_booking() {
         wp_send_json_success(array('message' => 'Booking annulleret.'));
     } else {
         wp_send_json_error(array('message' => 'Kunne ikke annullere booking.'));
+    }
+    exit;
+}
+
+/**
+ * Delete a past or cancelled booking (expert or user)
+ *
+ * @since 3.10.1
+ */
+function rfm_direct_delete_booking() {
+    ob_end_clean();
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Du skal være logget ind.'), 401);
+        exit;
+    }
+
+    // Accept nonces from both dashboards
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    $nonce_valid = !empty($nonce) && (
+        wp_verify_nonce($nonce, 'rfm_dashboard_tabbed') ||
+        wp_verify_nonce($nonce, 'rfm_user_dashboard')
+    );
+
+    if (!$nonce_valid) {
+        wp_send_json_error(array('message' => 'Sikkerhedstjek fejlede.'), 403);
+        exit;
+    }
+
+    $user_id = get_current_user_id();
+    $booking_id = intval($_POST['booking_id'] ?? 0);
+    $role = sanitize_text_field($_POST['role'] ?? 'user');
+
+    if (!$booking_id) {
+        wp_send_json_error(array('message' => 'Manglende data.'), 400);
+        exit;
+    }
+
+    if (!in_array($role, array('expert', 'user'))) {
+        $role = 'user';
+    }
+
+    $result = RFM_Booking::get_instance()->delete_booking($booking_id, $user_id, $role);
+
+    if ($result) {
+        wp_send_json_success(array('message' => 'Booking slettet.'));
+    } else {
+        wp_send_json_error(array('message' => 'Kunne ikke slette booking. Kun afsluttede eller aflyste bookinger kan slettes.'));
     }
     exit;
 }
