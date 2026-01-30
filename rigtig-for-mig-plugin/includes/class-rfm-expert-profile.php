@@ -339,20 +339,30 @@ class RFM_Expert_Profile {
             'seniorrabat'           => __('Seniorrabat', 'rigtig-for-mig'),
         );
 
-        // Language label map
-        $language_labels = array(
-            'dansk'       => 'Dansk',
-            'engelsk'     => 'English',
-            'svensk'      => 'Svenska',
-            'norsk'       => 'Norsk',
-            'suomi'       => 'Suomi',
-            'faeroyskt'   => 'Føroyskt',
-            'kalaallisut' => 'Kalaallisut',
-            'espanol'     => 'Español',
-            'italiano'    => 'Italiano',
-            'deutsch'     => 'Deutsch',
-            'arabic'      => 'العربية',
-        );
+        // Language labels from flexible fields system (uses admin "Felt navn")
+        $flexible_fields = RFM_Flexible_Fields_System::get_instance();
+        $all_fields = $flexible_fields->get_fields();
+        $language_labels = array();
+        if (isset($all_fields['sprog']) && isset($all_fields['sprog']['fields'])) {
+            foreach ($all_fields['sprog']['fields'] as $lang_code => $lang_data) {
+                $language_labels[$lang_code] = $lang_data['label'] ?? ucfirst($lang_code);
+            }
+        } else {
+            // Fallback if no sprog field group is configured
+            $language_labels = array(
+                'dansk'       => 'Dansk',
+                'engelsk'     => 'English',
+                'svensk'      => 'Svenska',
+                'norsk'       => 'Norsk / Bokmål',
+                'suomi'       => 'Suomi',
+                'faeroyskt'   => 'Føroyskt',
+                'kalaallisut' => 'Kalaallisut',
+                'espanol'     => 'Español',
+                'italiano'    => 'Italiano',
+                'deutsch'     => 'Deutsch',
+                'arabic'      => 'العربية',
+            );
+        }
 
         // Gender label map
         $gender_labels = array(
