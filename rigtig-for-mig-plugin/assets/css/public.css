@@ -138,7 +138,16 @@
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
 }
 
-.rfm-expert-card.rfm-featured {
+/* Subscription tier borders */
+.rfm-expert-card.rfm-plan-free {
+    border: 2px solid #7ec8a0;
+}
+
+.rfm-expert-card.rfm-plan-standard {
+    border: 2px solid #6fa8dc;
+}
+
+.rfm-expert-card.rfm-plan-premium {
     border: 2px solid gold;
 }
 
@@ -159,17 +168,6 @@
     object-fit: cover;
 }
 
-.rfm-featured-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: gold;
-    color: var(--rfm-dark);
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: bold;
-}
 
 .rfm-expert-card-content {
     padding: 20px;
