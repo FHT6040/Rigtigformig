@@ -445,6 +445,16 @@ class RFM_Expert_Dashboard {
                         <i class="dashicons dashicons-email-alt"></i> <?php _e('Beskeder', 'rigtig-for-mig'); ?>
                         <span class="rfm-unread-count" id="rfm-expert-unread-count" style="display: none;"></span>
                     </button>
+                    <?php if (RFM_Subscriptions::can_use_feature($expert_id, 'booking')): ?>
+                    <button type="button" class="rfm-tab-btn" data-tab="booking">
+                        <i class="dashicons dashicons-calendar-alt"></i> <?php _e('Booking', 'rigtig-for-mig'); ?>
+                        <?php
+                        $pending_count = RFM_Booking::get_instance()->count_pending($expert_id);
+                        if ($pending_count > 0): ?>
+                        <span class="rfm-badge rfm-badge-warning"><?php echo $pending_count; ?></span>
+                        <?php endif; ?>
+                    </button>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Global Message Area -->
@@ -576,6 +586,102 @@ class RFM_Expert_Dashboard {
                                     <span><?php echo esc_html($lang_label); ?></span>
                                 </label>
                                 <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Praktisk Information (v3.11.0) -->
+                        <div class="rfm-form-section">
+                            <h3><?php _e('Praktisk Information', 'rigtig-for-mig'); ?></h3>
+                            <p class="rfm-section-description"><?php _e('Disse oplysninger vises i en faktaboks på din profil.', 'rigtig-for-mig'); ?></p>
+
+                            <!-- Medlem af -->
+                            <div class="rfm-form-field">
+                                <label for="general_medlem_af"><?php _e('Medlem af', 'rigtig-for-mig'); ?></label>
+                                <input type="text" name="medlem_af" id="general_medlem_af"
+                                       value="<?php echo esc_attr(get_post_meta($expert_id, '_rfm_medlem_af', true)); ?>"
+                                       placeholder="<?php esc_attr_e('F.eks. Dansk Psykoterapeutforening', 'rigtig-for-mig'); ?>" />
+                                <small class="rfm-field-hint"><?php _e('Faglig forening eller organisation du er medlem af.', 'rigtig-for-mig'); ?></small>
+                            </div>
+
+                            <!-- Ventetid -->
+                            <div class="rfm-form-field">
+                                <label for="general_ventetid"><?php _e('Ventetid', 'rigtig-for-mig'); ?></label>
+                                <?php $ventetid = get_post_meta($expert_id, '_rfm_ventetid', true); ?>
+                                <select name="ventetid" id="general_ventetid">
+                                    <option value=""><?php _e('– Vælg ventetid –', 'rigtig-for-mig'); ?></option>
+                                    <option value="ingen" <?php selected($ventetid, 'ingen'); ?>><?php _e('Ingen ventetid', 'rigtig-for-mig'); ?></option>
+                                    <option value="under_1_uge" <?php selected($ventetid, 'under_1_uge'); ?>><?php _e('Under 1 uge', 'rigtig-for-mig'); ?></option>
+                                    <option value="1_2_uger" <?php selected($ventetid, '1_2_uger'); ?>><?php _e('1-2 uger', 'rigtig-for-mig'); ?></option>
+                                    <option value="2_4_uger" <?php selected($ventetid, '2_4_uger'); ?>><?php _e('2-4 uger', 'rigtig-for-mig'); ?></option>
+                                    <option value="1_2_maaneder" <?php selected($ventetid, '1_2_maaneder'); ?>><?php _e('1-2 måneder', 'rigtig-for-mig'); ?></option>
+                                    <option value="over_2_maaneder" <?php selected($ventetid, 'over_2_maaneder'); ?>><?php _e('Over 2 måneder', 'rigtig-for-mig'); ?></option>
+                                </select>
+                            </div>
+
+                            <!-- Sessionstype -->
+                            <div class="rfm-form-field">
+                                <label><?php _e('Sessionstype', 'rigtig-for-mig'); ?></label>
+                                <p class="rfm-section-description" style="margin-top:0;"><?php _e('Hvilke sessionsformater tilbyder du?', 'rigtig-for-mig'); ?></p>
+                                <?php
+                                $sessionstyper = get_post_meta($expert_id, '_rfm_sessionstyper', true);
+                                if (!is_array($sessionstyper)) $sessionstyper = array();
+
+                                $sessionstype_options = array(
+                                    'individuel'          => __('Individuel samtale', 'rigtig-for-mig'),
+                                    'online_terapi'       => __('Online terapi', 'rigtig-for-mig'),
+                                    'online_coaching'     => __('Online coaching', 'rigtig-for-mig'),
+                                    'parterapi'           => __('Parterapi', 'rigtig-for-mig'),
+                                    'familieterapi'       => __('Familieterapi', 'rigtig-for-mig'),
+                                    'kriseterapi'         => __('Kriseterapi', 'rigtig-for-mig'),
+                                    'forældrerådgivning'  => __('Forældrerådgivning', 'rigtig-for-mig'),
+                                    'saarbare_unge'       => __('Sårbare unge', 'rigtig-for-mig'),
+                                    'gruppeforløb'        => __('Gruppeforløb', 'rigtig-for-mig'),
+                                    'hjemmebesøg'         => __('Hjemmebesøg', 'rigtig-for-mig'),
+                                    'telefon'             => __('Telefonsamtale', 'rigtig-for-mig'),
+                                    'workshop'            => __('Workshop', 'rigtig-for-mig'),
+                                );
+                                ?>
+                                <div class="rfm-checkbox-grid">
+                                    <?php foreach ($sessionstype_options as $key => $label): ?>
+                                    <label class="rfm-checkbox-choice">
+                                        <input type="checkbox" name="sessionstyper[]" value="<?php echo esc_attr($key); ?>"
+                                               <?php checked(in_array($key, $sessionstyper)); ?> />
+                                        <span><?php echo esc_html($label); ?></span>
+                                    </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+
+                            <!-- Tilskud og rabat -->
+                            <div class="rfm-form-field">
+                                <label><?php _e('Tilskud og rabat', 'rigtig-for-mig'); ?></label>
+                                <?php
+                                $tilskud = get_post_meta($expert_id, '_rfm_tilskud', true);
+                                if (!is_array($tilskud)) $tilskud = array();
+                                $tilskud_tekst = get_post_meta($expert_id, '_rfm_tilskud_tekst', true);
+
+                                $tilskud_options = array(
+                                    'studierabat'           => __('Studierabat', 'rigtig-for-mig'),
+                                    'overfoerselsindkomst'  => __('Rabat ved overførselsindkomst', 'rigtig-for-mig'),
+                                    'laegehenvisning'       => __('Lægehenvisning', 'rigtig-for-mig'),
+                                    'forsikring'            => __('Forsikringsdækning', 'rigtig-for-mig'),
+                                    'seniorrabat'           => __('Seniorrabat', 'rigtig-for-mig'),
+                                );
+                                ?>
+                                <div class="rfm-checkbox-grid">
+                                    <?php foreach ($tilskud_options as $key => $label): ?>
+                                    <label class="rfm-checkbox-choice">
+                                        <input type="checkbox" name="tilskud[]" value="<?php echo esc_attr($key); ?>"
+                                               <?php checked(in_array($key, $tilskud)); ?> />
+                                        <span><?php echo esc_html($label); ?></span>
+                                    </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <label for="general_tilskud_tekst"><?php _e('Yderligere beskrivelse (valgfrit)', 'rigtig-for-mig'); ?></label>
+                                    <textarea name="tilskud_tekst" id="general_tilskud_tekst" rows="2"
+                                              placeholder="<?php esc_attr_e('F.eks. 10% rabat til studerende med gyldigt studiekort.', 'rigtig-for-mig'); ?>"><?php echo esc_textarea($tilskud_tekst); ?></textarea>
+                                </div>
                             </div>
                         </div>
 
@@ -790,6 +896,13 @@ class RFM_Expert_Dashboard {
                         </div>
                     </div>
                 </div>
+
+                <?php if (RFM_Subscriptions::can_use_feature($expert_id, 'booking')): ?>
+                <!-- Tab Content: Booking -->
+                <div class="rfm-tab-content" data-tab-content="booking">
+                    <?php echo RFM_Booking::get_instance()->render_expert_bookings_dashboard($expert_id); ?>
+                </div>
+                <?php endif; ?>
 
                 <!-- Education Template for Category Profiles -->
                 <template id="rfm-category-education-template">

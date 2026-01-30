@@ -289,6 +289,11 @@ class RFM_User_Dashboard {
                 </form>
             </div>
 
+            <!-- Bookings Section -->
+            <div class="rfm-dashboard-section rfm-bookings-section">
+                <?php echo RFM_Booking::get_instance()->render_user_bookings($user->ID); ?>
+            </div>
+
             <!-- Messages Section -->
             <div class="rfm-dashboard-section rfm-messages-section">
                 <h3>

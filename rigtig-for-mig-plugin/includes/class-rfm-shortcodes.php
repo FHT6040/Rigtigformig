@@ -417,13 +417,10 @@ class RFM_Shortcodes {
         }
         
         ?>
-        <div class="rfm-expert-card <?php echo $plan === 'premium' ? 'rfm-featured' : ''; ?>">
+        <div class="rfm-expert-card rfm-plan-<?php echo esc_attr($plan); ?>">
             <a href="<?php echo esc_url($permalink); ?>">
                 <div class="rfm-expert-card-image">
                     <?php echo get_the_post_thumbnail($expert_id, 'medium'); ?>
-                    <?php if ($plan === 'premium'): ?>
-                        <span class="rfm-featured-badge"><?php _e('Premium', 'rigtig-for-mig'); ?></span>
-                    <?php endif; ?>
                 </div>
                 
                 <div class="rfm-expert-card-content">
