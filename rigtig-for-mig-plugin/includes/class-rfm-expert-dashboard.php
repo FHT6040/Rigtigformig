@@ -78,6 +78,15 @@ class RFM_Expert_Dashboard {
             RFM_VERSION,
             true
         );
+
+        // Events JS (v3.14.0)
+        wp_enqueue_script(
+            'rfm-expert-events',
+            RFM_PLUGIN_URL . 'assets/js/expert-events.js',
+            array('jquery'),
+            RFM_VERSION,
+            true
+        );
     }
 
     /**
@@ -466,6 +475,9 @@ class RFM_Expert_Dashboard {
                     <?php endif; ?>
                     <button type="button" class="rfm-tab-btn" data-tab="articles">
                         <i class="dashicons dashicons-media-text"></i> <?php _e('Artikler', 'rigtig-for-mig'); ?>
+                    </button>
+                    <button type="button" class="rfm-tab-btn" data-tab="events">
+                        <i class="dashicons dashicons-calendar-alt"></i> <?php _e('Kurser & Events', 'rigtig-for-mig'); ?>
                     </button>
                 </div>
 
@@ -919,6 +931,11 @@ class RFM_Expert_Dashboard {
                 <!-- Tab Content: Articles (v3.13.0) -->
                 <div class="rfm-tab-content" data-tab-content="articles">
                     <?php RFM_Articles::get_instance()->render_dashboard_tab($expert_id, $plan); ?>
+                </div>
+
+                <!-- Tab Content: Events (v3.14.0) -->
+                <div class="rfm-tab-content" data-tab-content="events">
+                    <?php RFM_Events::get_instance()->render_dashboard_tab($expert_id, $plan); ?>
                 </div>
 
                 <!-- Education Template for Category Profiles -->

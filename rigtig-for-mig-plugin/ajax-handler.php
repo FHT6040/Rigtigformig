@@ -209,6 +209,23 @@ switch ($action) {
         rfm_direct_upload_article_image();
         break;
 
+    // Event handlers (v3.14.0)
+    case 'rfm_save_event':
+        rfm_direct_save_event();
+        break;
+
+    case 'rfm_delete_event':
+        rfm_direct_delete_event();
+        break;
+
+    case 'rfm_upload_event_image':
+        rfm_direct_upload_event_image();
+        break;
+
+    case 'rfm_upload_event_file':
+        rfm_direct_upload_event_file();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -2112,6 +2129,70 @@ function rfm_direct_upload_article_image() {
         RFM_Articles::get_instance()->ajax_upload_article_image();
     } else {
         wp_send_json_error(array('message' => 'Artikel-systemet er ikke tilgængeligt.'));
+    }
+    exit;
+}
+
+/**
+ * Handle saving an event (create or update)
+ *
+ * @since 3.14.0
+ */
+function rfm_direct_save_event() {
+    ob_end_clean();
+
+    if (class_exists('RFM_Events')) {
+        RFM_Events::get_instance()->ajax_save_event();
+    } else {
+        wp_send_json_error(array('message' => 'Event-systemet er ikke tilgængeligt.'));
+    }
+    exit;
+}
+
+/**
+ * Handle deleting an event
+ *
+ * @since 3.14.0
+ */
+function rfm_direct_delete_event() {
+    ob_end_clean();
+
+    if (class_exists('RFM_Events')) {
+        RFM_Events::get_instance()->ajax_delete_event();
+    } else {
+        wp_send_json_error(array('message' => 'Event-systemet er ikke tilgængeligt.'));
+    }
+    exit;
+}
+
+/**
+ * Handle uploading an event image
+ *
+ * @since 3.14.0
+ */
+function rfm_direct_upload_event_image() {
+    ob_end_clean();
+
+    if (class_exists('RFM_Events')) {
+        RFM_Events::get_instance()->ajax_upload_event_image();
+    } else {
+        wp_send_json_error(array('message' => 'Event-systemet er ikke tilgængeligt.'));
+    }
+    exit;
+}
+
+/**
+ * Handle uploading an event file/brochure
+ *
+ * @since 3.14.0
+ */
+function rfm_direct_upload_event_file() {
+    ob_end_clean();
+
+    if (class_exists('RFM_Events')) {
+        RFM_Events::get_instance()->ajax_upload_event_file();
+    } else {
+        wp_send_json_error(array('message' => 'Event-systemet er ikke tilgængeligt.'));
     }
     exit;
 }

@@ -17,6 +17,8 @@ class RFM_Taxonomies {
     public static function register() {
         self::register_category_taxonomy();
         self::register_specialization_taxonomy();
+        self::register_event_type_taxonomy();     // v3.14.0
+        self::register_event_audience_taxonomy();  // v3.14.0
 
         // Add admin fields for specialization-category relationship
         add_action('rfm_specialization_add_form_fields', array(__CLASS__, 'add_specialization_category_field'));
@@ -331,5 +333,83 @@ class RFM_Taxonomies {
         }
 
         return $filtered_specs;
+    }
+
+    // =========================================================================
+    // EVENT TAXONOMIES (v3.14.0)
+    // =========================================================================
+
+    /**
+     * Register event type taxonomy (Workshop, Retreat, Kursusforløb, etc.)
+     *
+     * @since 3.14.0
+     */
+    private static function register_event_type_taxonomy() {
+        $labels = array(
+            'name'              => _x('Event Type', 'taxonomy general name', 'rigtig-for-mig'),
+            'singular_name'     => _x('Event Type', 'taxonomy singular name', 'rigtig-for-mig'),
+            'search_items'      => __('Søg Event Typer', 'rigtig-for-mig'),
+            'all_items'         => __('Alle Event Typer', 'rigtig-for-mig'),
+            'edit_item'         => __('Rediger Event Type', 'rigtig-for-mig'),
+            'update_item'       => __('Opdater Event Type', 'rigtig-for-mig'),
+            'add_new_item'      => __('Tilføj Ny Event Type', 'rigtig-for-mig'),
+            'new_item_name'     => __('Nyt Event Type Navn', 'rigtig-for-mig'),
+            'menu_name'         => __('Event Typer', 'rigtig-for-mig'),
+        );
+
+        register_taxonomy('rfm_event_type', array('rfm_event'), array(
+            'hierarchical'      => false,
+            'labels'            => $labels,
+            'show_ui'           => true,
+            'show_admin_column' => true,
+            'query_var'         => true,
+            'rewrite'           => array('slug' => 'event-type'),
+            'show_in_rest'      => true,
+        ));
+
+        // Insert defaults
+        $defaults = array('Workshop', 'Retreat', 'Kursusforløb', 'Messe', 'Foredrag', 'Webinar', 'Seminar');
+        foreach ($defaults as $term) {
+            if (!term_exists($term, 'rfm_event_type')) {
+                wp_insert_term($term, 'rfm_event_type');
+            }
+        }
+    }
+
+    /**
+     * Register event audience taxonomy (Privat, Erhverv, Fagpersoner, etc.)
+     *
+     * @since 3.14.0
+     */
+    private static function register_event_audience_taxonomy() {
+        $labels = array(
+            'name'              => _x('Målgruppe', 'taxonomy general name', 'rigtig-for-mig'),
+            'singular_name'     => _x('Målgruppe', 'taxonomy singular name', 'rigtig-for-mig'),
+            'search_items'      => __('Søg Målgrupper', 'rigtig-for-mig'),
+            'all_items'         => __('Alle Målgrupper', 'rigtig-for-mig'),
+            'edit_item'         => __('Rediger Målgruppe', 'rigtig-for-mig'),
+            'update_item'       => __('Opdater Målgruppe', 'rigtig-for-mig'),
+            'add_new_item'      => __('Tilføj Ny Målgruppe', 'rigtig-for-mig'),
+            'new_item_name'     => __('Nyt Målgruppe Navn', 'rigtig-for-mig'),
+            'menu_name'         => __('Målgrupper', 'rigtig-for-mig'),
+        );
+
+        register_taxonomy('rfm_event_audience', array('rfm_event'), array(
+            'hierarchical'      => false,
+            'labels'            => $labels,
+            'show_ui'           => true,
+            'show_admin_column' => true,
+            'query_var'         => true,
+            'rewrite'           => array('slug' => 'maalgruppe'),
+            'show_in_rest'      => true,
+        ));
+
+        // Insert defaults
+        $defaults = array('Privat', 'Erhverv', 'Begge', 'Fagpersoner');
+        foreach ($defaults as $term) {
+            if (!term_exists($term, 'rfm_event_audience')) {
+                wp_insert_term($term, 'rfm_event_audience');
+            }
+        }
     }
 }

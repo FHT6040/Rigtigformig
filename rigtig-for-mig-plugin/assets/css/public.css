@@ -5171,4 +5171,216 @@ body.rfm-expert-user.admin-bar {
     .rfm-events-category-filter {
         min-width: unset;
     }
+
+    .rfm-event-match-row {
+        flex-direction: column;
+    }
+
+    .rfm-form-row-2,
+    .rfm-form-row-3 {
+        flex-direction: column;
+    }
+
+    .rfm-event-file-download {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* =====================================================
+   EVENT TAGS (type, format, audience badges in single view)
+   ===================================================== */
+.rfm-event-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.rfm-event-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.rfm-event-tag-type {
+    background: #e8f4fd;
+    color: #1a73e8;
+}
+
+.rfm-event-tag-format {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.rfm-event-tag-audience {
+    background: #fce4ec;
+    color: #c62828;
+}
+
+/* =====================================================
+   EVENT MATCH SECTIONS (what you get, who for, who not for)
+   ===================================================== */
+.rfm-event-match-section {
+    margin-top: 30px;
+    padding: 20px 25px;
+    border-radius: 10px;
+    border-left: 4px solid;
+}
+
+.rfm-event-match-get {
+    background: #f0f9f0;
+    border-color: #27ae60;
+}
+
+.rfm-event-match-get h3 {
+    margin: 0 0 10px;
+    font-size: 1.15em;
+    color: #27ae60;
+}
+
+.rfm-event-match-for {
+    background: #f0f7ff;
+    border-color: #3498db;
+}
+
+.rfm-event-match-for h4 {
+    margin: 0 0 8px;
+    font-size: 1em;
+    color: #3498db;
+}
+
+.rfm-event-match-not-for {
+    background: #fef5f0;
+    border-color: #e67e22;
+}
+
+.rfm-event-match-not-for h4 {
+    margin: 0 0 8px;
+    font-size: 1em;
+    color: #e67e22;
+}
+
+.rfm-event-match-content p {
+    margin: 0 0 8px;
+    line-height: 1.6;
+}
+
+.rfm-event-match-content p:last-child {
+    margin-bottom: 0;
+}
+
+.rfm-event-match-row {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.rfm-event-match-row .rfm-event-match-section {
+    flex: 1;
+    margin-top: 0;
+}
+
+/* =====================================================
+   EVENT FILE DOWNLOAD
+   ===================================================== */
+.rfm-event-file-download {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 25px;
+    padding: 15px 20px;
+    background: var(--rfm-gray);
+    border-radius: 8px;
+}
+
+.rfm-event-file-download .dashicons {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #e74c3c;
+    flex-shrink: 0;
+}
+
+.rfm-event-file-download a {
+    font-weight: 500;
+}
+
+.rfm-event-file-download small {
+    color: #999;
+    font-size: 0.85em;
+}
+
+/* =====================================================
+   DASHBOARD FORM ROWS (multi-column layouts)
+   ===================================================== */
+.rfm-form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.rfm-form-row-2 {
+    display: flex;
+    gap: 15px;
+}
+
+.rfm-form-row-2 > .rfm-form-field {
+    flex: 1;
+}
+
+.rfm-form-row-3 {
+    display: flex;
+    gap: 15px;
+}
+
+.rfm-form-row-3 > .rfm-form-field {
+    flex: 1;
+}
+
+.rfm-form-section h4 {
+    margin: 0 0 20px;
+    font-size: 1.2em;
+    color: var(--rfm-dark);
+}
+
+.rfm-form-field .required {
+    color: #e74c3c;
+}
+
+.rfm-field-hint {
+    display: block;
+    margin-top: 4px;
+    color: #999;
+    font-size: 0.8em;
+}
+
+/* Event file upload preview */
+.rfm-event-file-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.rfm-event-file-preview {
+    padding: 10px 15px;
+    background: var(--rfm-gray);
+    border-radius: 6px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.rfm-no-file {
+    color: #999;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.rfm-file-name {
+    font-weight: 500;
+    color: var(--rfm-dark);
+    word-break: break-all;
 }

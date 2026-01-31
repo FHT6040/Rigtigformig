@@ -108,6 +108,34 @@ class RFM_Upload_Manager {
                     return $dirs;
                 }
             }
+
+            // Event image upload (v3.14.0)
+            if ($action === 'rfm_upload_event_image') {
+                $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+                if ($expert_id) {
+                    $custom_dir = '/rfm/events/' . $expert_id . '/images';
+                    $dirs['path'] = $dirs['basedir'] . $custom_dir;
+                    $dirs['url'] = $dirs['baseurl'] . $custom_dir;
+                    $dirs['subdir'] = $custom_dir;
+
+                    error_log("RFM Upload: Redirecting event image for expert {$expert_id} to {$dirs['path']}");
+                    return $dirs;
+                }
+            }
+
+            // Event file/brochure upload (v3.14.0)
+            if ($action === 'rfm_upload_event_file') {
+                $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+                if ($expert_id) {
+                    $custom_dir = '/rfm/events/' . $expert_id . '/files';
+                    $dirs['path'] = $dirs['basedir'] . $custom_dir;
+                    $dirs['url'] = $dirs['baseurl'] . $custom_dir;
+                    $dirs['subdir'] = $custom_dir;
+
+                    error_log("RFM Upload: Redirecting event file for expert {$expert_id} to {$dirs['path']}");
+                    return $dirs;
+                }
+            }
         }
 
         // Get current post being edited (admin context)
@@ -221,6 +249,21 @@ class RFM_Upload_Manager {
                     update_post_meta($attachment_id, '_rfm_upload_date', current_time('mysql'));
 
                     error_log("RFM Upload: Tagged article image $attachment_id for expert $expert_id");
+                    return;
+                }
+            }
+
+            // Check if this is an event image or file upload (v3.14.0)
+            if ($action === 'rfm_upload_event_image' || $action === 'rfm_upload_event_file') {
+                $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+                if ($expert_id > 0) {
+                    $upload_type = ($action === 'rfm_upload_event_file') ? 'event_file' : 'event_image';
+                    update_post_meta($attachment_id, '_rfm_owner_type', 'rfm_event');
+                    update_post_meta($attachment_id, '_rfm_owner_id', $expert_id);
+                    update_post_meta($attachment_id, '_rfm_upload_type', $upload_type);
+                    update_post_meta($attachment_id, '_rfm_upload_date', current_time('mysql'));
+
+                    error_log("RFM Upload: Tagged $upload_type $attachment_id for expert $expert_id");
                     return;
                 }
             }
@@ -537,6 +580,7 @@ class RFM_Upload_Manager {
         $type_labels = array(
             'rfm_expert'  => 'Ekspert',
             'rfm_article' => 'Artikel',
+            'rfm_event'   => 'Event',
             'user'        => 'Bruger',
             'rfm_bruger'  => 'Bruger',
         );
