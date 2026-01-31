@@ -43,8 +43,11 @@ class RFM_Upload_Manager {
         // Auto-delete attachments when user is deleted
         add_action('delete_user', array($this, 'delete_user_attachments'), 10, 3);
 
-        // Filter Media Library (hide RFM uploads from standard view)
+        // Filter Media Library - Grid view (AJAX)
         add_filter('ajax_query_attachments_args', array($this, 'filter_media_library'));
+
+        // Filter Media Library - List view (pre_get_posts)
+        add_action('pre_get_posts', array($this, 'filter_media_library_list_view'));
 
         // Add custom columns to Media Library for RFM uploads
         add_filter('manage_media_columns', array($this, 'add_media_columns'));
@@ -88,6 +91,20 @@ class RFM_Upload_Manager {
                     $dirs['subdir'] = $custom_dir;
 
                     error_log("RFM Upload: Redirecting expert {$post_id} upload to {$dirs['path']}");
+                    return $dirs;
+                }
+            }
+
+            // Article image upload (v3.13.0)
+            if ($action === 'rfm_upload_article_image') {
+                $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+                if ($expert_id) {
+                    $custom_dir = '/rfm/articles/' . $expert_id;
+                    $dirs['path'] = $dirs['basedir'] . $custom_dir;
+                    $dirs['url'] = $dirs['baseurl'] . $custom_dir;
+                    $dirs['subdir'] = $custom_dir;
+
+                    error_log("RFM Upload: Redirecting article image for expert {$expert_id} to {$dirs['path']}");
                     return $dirs;
                 }
             }
@@ -190,6 +207,20 @@ class RFM_Upload_Manager {
                     update_post_meta($attachment_id, '_rfm_upload_date', current_time('mysql'));
 
                     error_log("RFM Upload: Tagged expert $upload_type $attachment_id for expert $expert_id");
+                    return;
+                }
+            }
+
+            // Check if this is an article image upload (v3.13.0)
+            if ($action === 'rfm_upload_article_image') {
+                $expert_id = isset($_POST['expert_id']) ? intval($_POST['expert_id']) : 0;
+                if ($expert_id > 0) {
+                    update_post_meta($attachment_id, '_rfm_owner_type', 'rfm_article');
+                    update_post_meta($attachment_id, '_rfm_owner_id', $expert_id);
+                    update_post_meta($attachment_id, '_rfm_upload_type', 'article_image');
+                    update_post_meta($attachment_id, '_rfm_upload_date', current_time('mysql'));
+
+                    error_log("RFM Upload: Tagged article image $attachment_id for expert $expert_id");
                     return;
                 }
             }
@@ -417,6 +448,56 @@ class RFM_Upload_Manager {
     }
 
     /**
+     * Filter Media Library list view to hide RFM uploads
+     *
+     * This complements filter_media_library() which only handles the grid/AJAX view.
+     * Together they ensure RFM uploads are fully isolated from the standard media library.
+     *
+     * @since 3.13.0
+     * @param WP_Query $query
+     */
+    public function filter_media_library_list_view($query) {
+        // Only in admin
+        if (!is_admin()) {
+            return;
+        }
+
+        // Only for the main query on the upload.php (media library list) page
+        if (!$query->is_main_query()) {
+            return;
+        }
+
+        // Check we're on the media library page
+        global $pagenow;
+        if ($pagenow !== 'upload.php') {
+            return;
+        }
+
+        // Only filter attachment queries
+        if ($query->get('post_type') !== 'attachment') {
+            return;
+        }
+
+        if (isset($_REQUEST['rfm_uploads']) && $_REQUEST['rfm_uploads'] === 'show') {
+            // Show ONLY RFM uploads
+            $meta_query = $query->get('meta_query') ?: array();
+            $meta_query[] = array(
+                'key'     => '_rfm_owner_type',
+                'compare' => 'EXISTS',
+            );
+            $query->set('meta_query', $meta_query);
+        } else {
+            // Hide RFM uploads from standard view
+            $meta_query = $query->get('meta_query') ?: array();
+            $meta_query[] = array(
+                'key'     => '_rfm_owner_type',
+                'compare' => 'NOT EXISTS',
+            );
+            $query->set('meta_query', $meta_query);
+        }
+    }
+
+    /**
      * Add custom columns to Media Library
      *
      * @param array $columns Existing columns
@@ -453,7 +534,13 @@ class RFM_Upload_Manager {
             return;
         }
 
-        $type_label = $owner_type === 'rfm_expert' ? 'Ekspert' : 'Bruger';
+        $type_labels = array(
+            'rfm_expert'  => 'Ekspert',
+            'rfm_article' => 'Artikel',
+            'user'        => 'Bruger',
+            'rfm_bruger'  => 'Bruger',
+        );
+        $type_label = isset($type_labels[$owner_type]) ? $type_labels[$owner_type] : ucfirst($owner_type);
         $edit_link = get_edit_post_link($owner_id);
 
         echo '<strong>' . esc_html($type_label) . ':</strong><br>';

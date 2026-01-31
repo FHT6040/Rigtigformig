@@ -3,6 +3,27 @@
 Changelog
 =========
 
+= 3.13.0 - January 2026 =
+* NEW: Ekspert-artikler system med abonnements-baserede grænser
+  - Gratis: 0 artikler
+  - Standard: 4 artikler/år (kalenderår, nulstilles 1. januar)
+  - Premium: 1 artikel/måned (kalendermåned, nulstilles 1. i måneden)
+* NEW: Custom post type 'rfm_article' med URL-struktur /artikel/{slug}/ og arkiv /artikler/
+* NEW: Admin-godkendelsesworkflow for artikler (pending -> publish/reject)
+  - Afviste artikler tæller IKKE mod ekspertens kvote
+  - Publicerede artikler forbliver synlige ved nedgradering
+  - Mindre redigeringer kræver ikke ny godkendelse, større ændringer sendes til review
+* NEW: "Artikler" fane i ekspert-dashboard med:
+  - Kvota-visning (brugte/tilgængelige artikler)
+  - Artikeleditor med titel, indhold, kategori og billede-upload
+  - Artikelliste med status, redigering og sletning
+* NEW: Artikel billede-upload med isoleret lagring (/rfm/articles/)
+* NEW: Single article template med ekspert-info, kategori-bar og "Om forfatteren" kort
+* NEW: Admin-kolonner og meta boxes for artikler (ekspert, kategori, status, godkend/afvis)
+* NEW: Admin-notifikation for ventende artikler
+* FIX: Upload isolation virker nu også i mediebibliotekts liste-visning (pre_get_posts filter)
+* FIX: Mediebiblioteket skjuler nu korrekt RFM-uploads i både grid- og liste-visning
+
 = 3.12.0 - January 2026 =
 * NEW: Farvede rammer på ekspert-kort der matcher abonnementsniveau (grøn=Gratis, blå=Standard, guld=Premium)
 * REMOVED: 'Premium' badge/label fjernet fra ekspert-kort

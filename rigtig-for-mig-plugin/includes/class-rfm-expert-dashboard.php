@@ -69,6 +69,15 @@ class RFM_Expert_Dashboard {
             ),
             'logoutNonce' => wp_create_nonce('rfm_logout')
         ));
+
+        // Articles JS (v3.13.0)
+        wp_enqueue_script(
+            'rfm-expert-articles',
+            RFM_PLUGIN_URL . 'assets/js/expert-articles.js',
+            array('jquery'),
+            RFM_VERSION,
+            true
+        );
     }
 
     /**
