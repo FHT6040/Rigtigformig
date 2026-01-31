@@ -196,6 +196,19 @@ switch ($action) {
         rfm_direct_delete_booking();
         break;
 
+    // Article handlers (v3.13.0)
+    case 'rfm_save_article':
+        rfm_direct_save_article();
+        break;
+
+    case 'rfm_delete_article':
+        rfm_direct_delete_article();
+        break;
+
+    case 'rfm_upload_article_image':
+        rfm_direct_upload_article_image();
+        break;
+
     default:
         ob_end_clean();
         wp_send_json_error(array('message' => 'Ugyldig handling: ' . $action), 400);
@@ -2051,6 +2064,54 @@ function rfm_direct_delete_booking() {
         wp_send_json_success(array('message' => 'Booking slettet.'));
     } else {
         wp_send_json_error(array('message' => 'Kunne ikke slette booking. Kun afsluttede eller aflyste bookinger kan slettes.'));
+    }
+    exit;
+}
+
+/**
+ * Handle saving an article (create or update)
+ *
+ * @since 3.13.0
+ */
+function rfm_direct_save_article() {
+    ob_end_clean();
+
+    if (class_exists('RFM_Articles')) {
+        RFM_Articles::get_instance()->ajax_save_article();
+    } else {
+        wp_send_json_error(array('message' => 'Artikel-systemet er ikke tilgængeligt.'));
+    }
+    exit;
+}
+
+/**
+ * Handle deleting an article
+ *
+ * @since 3.13.0
+ */
+function rfm_direct_delete_article() {
+    ob_end_clean();
+
+    if (class_exists('RFM_Articles')) {
+        RFM_Articles::get_instance()->ajax_delete_article();
+    } else {
+        wp_send_json_error(array('message' => 'Artikel-systemet er ikke tilgængeligt.'));
+    }
+    exit;
+}
+
+/**
+ * Handle uploading an article image
+ *
+ * @since 3.13.0
+ */
+function rfm_direct_upload_article_image() {
+    ob_end_clean();
+
+    if (class_exists('RFM_Articles')) {
+        RFM_Articles::get_instance()->ajax_upload_article_image();
+    } else {
+        wp_send_json_error(array('message' => 'Artikel-systemet er ikke tilgængeligt.'));
     }
     exit;
 }

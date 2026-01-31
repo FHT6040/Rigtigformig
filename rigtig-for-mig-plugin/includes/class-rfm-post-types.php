@@ -17,6 +17,7 @@ class RFM_Post_Types {
     public static function register() {
         self::register_expert_post_type();
         self::register_user_post_type();
+        self::register_article_post_type(); // v3.13.0 - Expert articles
 
         // Enable Elementor for expert post type
         add_action('init', array(__CLASS__, 'enable_elementor_support'), 20);
@@ -675,5 +676,55 @@ class RFM_Post_Types {
         if (isset($_POST['rfm_wp_user_id'])) {
             update_post_meta($post_id, '_rfm_wp_user_id', intval($_POST['rfm_wp_user_id']));
         }
+    }
+
+    /**
+     * Register Article post type (v3.13.0)
+     *
+     * Expert articles with admin approval workflow.
+     * Shares rfm_category taxonomy with experts.
+     */
+    private static function register_article_post_type() {
+        $labels = array(
+            'name'                  => _x('Artikler', 'Post type general name', 'rigtig-for-mig'),
+            'singular_name'         => _x('Artikel', 'Post type singular name', 'rigtig-for-mig'),
+            'menu_name'             => _x('Artikler', 'Admin Menu text', 'rigtig-for-mig'),
+            'name_admin_bar'        => _x('Artikel', 'Add New on Toolbar', 'rigtig-for-mig'),
+            'add_new'               => __('Tilføj Ny', 'rigtig-for-mig'),
+            'add_new_item'          => __('Tilføj Ny Artikel', 'rigtig-for-mig'),
+            'new_item'              => __('Ny Artikel', 'rigtig-for-mig'),
+            'edit_item'             => __('Rediger Artikel', 'rigtig-for-mig'),
+            'view_item'             => __('Vis Artikel', 'rigtig-for-mig'),
+            'all_items'             => __('Alle Artikler', 'rigtig-for-mig'),
+            'search_items'          => __('Søg Artikler', 'rigtig-for-mig'),
+            'not_found'             => __('Ingen artikler fundet.', 'rigtig-for-mig'),
+            'not_found_in_trash'    => __('Ingen artikler fundet i papirkurv.', 'rigtig-for-mig'),
+            'featured_image'        => _x('Artikelbillede', 'Overrides the "Featured Image" phrase', 'rigtig-for-mig'),
+            'set_featured_image'    => _x('Sæt artikelbillede', 'Overrides the "Set featured image" phrase', 'rigtig-for-mig'),
+            'remove_featured_image' => _x('Fjern artikelbillede', 'Overrides the "Remove featured image" phrase', 'rigtig-for-mig'),
+            'use_featured_image'    => _x('Brug som artikelbillede', 'Overrides the "Use as featured image" phrase', 'rigtig-for-mig'),
+            'archives'              => _x('Artikel arkiver', 'The post type archive label', 'rigtig-for-mig'),
+        );
+
+        $args = array(
+            'labels'             => $labels,
+            'description'        => __('Ekspert-artikler med admin-godkendelse', 'rigtig-for-mig'),
+            'public'             => true,
+            'publicly_queryable' => true,
+            'show_ui'            => true,
+            'show_in_menu'       => true,
+            'query_var'          => true,
+            'rewrite'            => array('slug' => 'artikel'),
+            'capability_type'    => 'post',
+            'has_archive'        => 'artikler',
+            'hierarchical'       => false,
+            'menu_position'      => 6,
+            'menu_icon'          => 'dashicons-media-text',
+            'supports'           => array('title', 'editor', 'thumbnail', 'author'),
+            'show_in_rest'       => true,
+            'taxonomies'         => array('rfm_category'),
+        );
+
+        register_post_type('rfm_article', $args);
     }
 }

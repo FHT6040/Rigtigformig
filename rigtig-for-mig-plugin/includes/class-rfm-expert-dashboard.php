@@ -455,6 +455,9 @@ class RFM_Expert_Dashboard {
                         <?php endif; ?>
                     </button>
                     <?php endif; ?>
+                    <button type="button" class="rfm-tab-btn" data-tab="articles">
+                        <i class="dashicons dashicons-media-text"></i> <?php _e('Artikler', 'rigtig-for-mig'); ?>
+                    </button>
                 </div>
 
                 <!-- Global Message Area -->
@@ -903,6 +906,11 @@ class RFM_Expert_Dashboard {
                     <?php echo RFM_Booking::get_instance()->render_expert_bookings_dashboard($expert_id); ?>
                 </div>
                 <?php endif; ?>
+
+                <!-- Tab Content: Articles (v3.13.0) -->
+                <div class="rfm-tab-content" data-tab-content="articles">
+                    <?php RFM_Articles::get_instance()->render_dashboard_tab($expert_id, $plan); ?>
+                </div>
 
                 <!-- Education Template for Category Profiles -->
                 <template id="rfm-category-education-template">
