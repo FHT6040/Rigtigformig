@@ -24,11 +24,12 @@
             ajaxUrl = pluginUrl + 'ajax-handler.php';
         }
 
-        var nonce = '';
-        if (typeof rfmDashboard !== 'undefined' && rfmDashboard.nonce) {
+        // Article AJAX handlers require 'rfm_dashboard_tabbed' nonce action,
+        // so prioritize the form nonce over the localized rfmDashboard.nonce
+        // which uses a different action ('rfm_expert_dashboard').
+        var nonce = $('input[name="rfm_tabbed_nonce"]').val() || '';
+        if (!nonce && typeof rfmDashboard !== 'undefined' && rfmDashboard.nonce) {
             nonce = rfmDashboard.nonce;
-        } else {
-            nonce = $('input[name="rfm_tabbed_nonce"]').val() || '';
         }
 
         // ========================================

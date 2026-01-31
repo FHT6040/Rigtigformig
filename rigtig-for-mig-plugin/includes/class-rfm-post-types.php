@@ -18,6 +18,7 @@ class RFM_Post_Types {
         self::register_expert_post_type();
         self::register_user_post_type();
         self::register_article_post_type(); // v3.13.0 - Expert articles
+        self::register_event_post_type();   // v3.14.0 - Kurser & Events
 
         // Enable Elementor for expert post type
         add_action('init', array(__CLASS__, 'enable_elementor_support'), 20);
@@ -726,5 +727,55 @@ class RFM_Post_Types {
         );
 
         register_post_type('rfm_article', $args);
+    }
+
+    /**
+     * Register Event post type (v3.14.0)
+     *
+     * Kurser & Events — public listing of courses and events.
+     * Shares rfm_category taxonomy with experts and articles.
+     */
+    private static function register_event_post_type() {
+        $labels = array(
+            'name'                  => _x('Kurser & Events', 'Post type general name', 'rigtig-for-mig'),
+            'singular_name'         => _x('Kursus/Event', 'Post type singular name', 'rigtig-for-mig'),
+            'menu_name'             => _x('Kurser & Events', 'Admin Menu text', 'rigtig-for-mig'),
+            'name_admin_bar'        => _x('Kursus/Event', 'Add New on Toolbar', 'rigtig-for-mig'),
+            'add_new'               => __('Tilføj Ny', 'rigtig-for-mig'),
+            'add_new_item'          => __('Tilføj Nyt Kursus/Event', 'rigtig-for-mig'),
+            'new_item'              => __('Nyt Kursus/Event', 'rigtig-for-mig'),
+            'edit_item'             => __('Rediger Kursus/Event', 'rigtig-for-mig'),
+            'view_item'             => __('Vis Kursus/Event', 'rigtig-for-mig'),
+            'all_items'             => __('Alle Kurser & Events', 'rigtig-for-mig'),
+            'search_items'          => __('Søg Kurser & Events', 'rigtig-for-mig'),
+            'not_found'             => __('Ingen kurser eller events fundet.', 'rigtig-for-mig'),
+            'not_found_in_trash'    => __('Ingen kurser eller events fundet i papirkurv.', 'rigtig-for-mig'),
+            'featured_image'        => _x('Eventbillede', 'Overrides the "Featured Image" phrase', 'rigtig-for-mig'),
+            'set_featured_image'    => _x('Sæt eventbillede', 'Overrides the "Set featured image" phrase', 'rigtig-for-mig'),
+            'remove_featured_image' => _x('Fjern eventbillede', 'Overrides the "Remove featured image" phrase', 'rigtig-for-mig'),
+            'use_featured_image'    => _x('Brug som eventbillede', 'Overrides the "Use as featured image" phrase', 'rigtig-for-mig'),
+            'archives'              => _x('Kursus & Event arkiver', 'The post type archive label', 'rigtig-for-mig'),
+        );
+
+        $args = array(
+            'labels'             => $labels,
+            'description'        => __('Kurser og events fra eksperter', 'rigtig-for-mig'),
+            'public'             => true,
+            'publicly_queryable' => true,
+            'show_ui'            => true,
+            'show_in_menu'       => true,
+            'query_var'          => true,
+            'rewrite'            => array('slug' => 'kursus-event'),
+            'capability_type'    => 'post',
+            'has_archive'        => 'kurser-events',
+            'hierarchical'       => false,
+            'menu_position'      => 7,
+            'menu_icon'          => 'dashicons-calendar-alt',
+            'supports'           => array('title', 'editor', 'thumbnail', 'author'),
+            'show_in_rest'       => true,
+            'taxonomies'         => array('rfm_category'),
+        );
+
+        register_post_type('rfm_event', $args);
     }
 }
